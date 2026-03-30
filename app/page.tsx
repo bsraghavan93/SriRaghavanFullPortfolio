@@ -28,6 +28,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import HobbySection from "@/components/HobbySection";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 type Project = {
@@ -1161,6 +1162,7 @@ export default function PortfolioSite() {
               <TechStack />
               <Achievements />
               <Experience />
+              <HobbySection />
               <Education />
               <Contact />
               <BeyondWorkTeaser onInterests={() => setPage("interests")} />
