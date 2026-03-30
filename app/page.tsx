@@ -93,23 +93,30 @@ const ACHIEVEMENTS = [
   {
     icon: Trophy,
     number: "01",
-    title: "Cut Deployment Time by 94%",
     project: "United Airlines – Loyalty & Accrual Redemptions",
-    text: "Built Azure DevOps CI/CD pipelines with blue-green deployments at United Airlines — reducing release time from 4 hours to just 15 minutes with zero-downtime production deployments.",
+    title: "Transformed Manual Booking into One-Click Automation",
+    text: "Engineered an Upgrade Manager API powering the Navigator system — converting multi-hour manual upgrade workflows into instant one-click operations, drastically improving agent efficiency and customer turnaround time.",
   },
   {
     icon: Sparkles,
     number: "02",
-    title: "Reduced MTTR by 60% & API Latency by 70%",
-    project: "United Airlines – Loyalty & Accrual Redemptions",
-    text: "Configured Kibana and Dynatrace APM for proactive monitoring, and implemented Redis caching for loyalty data — driving a 70% improvement in API response times.",
+    project: "New Jersey Treasury – Claims Modernization",
+    title: "Accelerated Claim Processing Across State Systems",
+    text: "Led modernization of legacy claim processing applications to .NET Core & Azure — improving system reliability, strengthening security, and significantly reducing processing time for high-volume state-wide claims.",
   },
   {
     icon: Layers3,
     number: "03",
-    title: "Scaled to 10,000+ Concurrent Requests",
-    project: "United Airlines – Loyalty & Accrual Redemptions",
-    text: "Built microservices with .NET Core 6, Docker, and Kubernetes at United Airlines with horizontal pod autoscaling and load balancing to handle peak loyalty transaction traffic.",
+    project: "United Airlines – Inflight Records System",
+    title: "Improved Application Performance by 30%+",
+    text: "Optimized frontend and backend performance using React, Next.js, and SQL tuning — reducing load times and enhancing real-time data access for mission-critical inflight operations.",
+  },
+  {
+    icon: Code2,
+    number: "04",
+    project: "Rocket Mortgage – Loan Processing Platform",
+    title: "Boosted User Engagement by 50%",
+    text: "Built high-performance web applications using Next.js and .NET microservices — improving page load speed, SEO ranking, and increasing user engagement by over 50% in loan processing workflows.",
   },
 ];
 
@@ -499,7 +506,7 @@ function Achievements() {
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-60px" }}
-        className="grid gap-6 md:grid-cols-3"
+        className="grid gap-6 md:grid-cols-2 lg:grid-cols-4"
       >
         {ACHIEVEMENTS.map((item) => {
           const Icon = item.icon;
