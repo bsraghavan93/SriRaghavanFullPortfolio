@@ -12,11 +12,10 @@ import {
   Code2,
   Database,
   Download,
-  Github,
+  ExternalLink,
   GraduationCap,
   Heart,
   Layers3,
-  Linkedin,
   Mail,
   MapPin,
   Monitor,
@@ -857,8 +856,8 @@ function Contact() {
   ];
 
   const socials = [
-    { icon: Github, label: "GitHub", href: GITHUB_URL },
-    { icon: Linkedin, label: "LinkedIn", href: LINKEDIN_URL },
+    { icon: ExternalLink, label: "GitHub", href: GITHUB_URL },
+    { icon: ExternalLink, label: "LinkedIn", href: LINKEDIN_URL },
   ];
 
   return (
