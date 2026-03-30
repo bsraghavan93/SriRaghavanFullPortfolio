@@ -216,43 +216,45 @@ function HobbyCard({ hobby }: { hobby: Hobby }) {
 }
 
 // ─── MAIN SECTION ─────────────────────────────────────────────────────────────
-export default function HobbySection() {
+export default function HobbySection({ hideHeader = false }: { hideHeader?: boolean }) {
   const featured = HOBBIES.find((h) => h.featured)!;
   const rest = HOBBIES.filter((h) => !h.featured);
   const firstRow = rest.slice(0, 3);
   const secondRow = rest.slice(3);
 
   return (
-    <section id="beyond-work" className="px-6 md:px-12 py-24 space-y-14">
-      {/* Section header */}
-      <motion.div
-        variants={stagger}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-80px" }}
-        className="space-y-4 max-w-2xl"
-      >
-        <motion.div variants={fadeUp}>
-          <div className="inline-flex items-center gap-2 rounded-full border border-pink-400/25 bg-pink-400/8 px-3 py-1 text-[11px] uppercase tracking-[0.28em] text-pink-300/80">
-            <Camera className="h-3 w-3" />
-            Beyond Work
-          </div>
-        </motion.div>
-        <motion.h2
-          variants={fadeUp}
-          className="text-4xl md:text-5xl font-bold text-white leading-tight"
+    <section id="beyond-work" className="space-y-10">
+      {/* Section header — hidden when embedded inside the interests page */}
+      {!hideHeader && (
+        <motion.div
+          variants={stagger}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-80px" }}
+          className="space-y-4 max-w-2xl"
         >
-          Life beyond the{" "}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-violet-400">
-            terminal
-          </span>
-        </motion.h2>
-        <motion.p variants={fadeUp} className="text-slate-400 text-base leading-7">
-          Engineering is craft — so is storytelling through a lens, building
-          physical objects from code, and exploring the world for fresh
-          perspective.
-        </motion.p>
-      </motion.div>
+          <motion.div variants={fadeUp}>
+            <div className="inline-flex items-center gap-2 rounded-full border border-pink-400/25 bg-pink-400/8 px-3 py-1 text-[11px] uppercase tracking-[0.28em] text-pink-300/80">
+              <Camera className="h-3 w-3" />
+              Beyond Work
+            </div>
+          </motion.div>
+          <motion.h2
+            variants={fadeUp}
+            className="text-4xl md:text-5xl font-bold text-white leading-tight"
+          >
+            Life beyond the{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-violet-400">
+              terminal
+            </span>
+          </motion.h2>
+          <motion.p variants={fadeUp} className="text-slate-400 text-base leading-7">
+            Engineering is craft — so is storytelling through a lens, building
+            physical objects from code, and exploring the world for fresh
+            perspective.
+          </motion.p>
+        </motion.div>
+      )}
 
       {/* Cards */}
       <motion.div

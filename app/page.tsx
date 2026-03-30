@@ -1107,30 +1107,7 @@ function InterestsPage({ onBack }: { onBack: () => void }) {
           </motion.p>
         </motion.div>
 
-        <motion.div
-          variants={stagger}
-          initial="hidden"
-          animate="visible"
-          className="grid gap-5 md:grid-cols-3"
-        >
-          {[
-            { label: "Photography & Visual Storytelling", symbol: "◈", sub: "Capturing moments, light, and perspective." },
-            { label: "Travel & Exploration", symbol: "◎", sub: "New places, cultures, and inspiration." },
-            { label: "Personal Interests & Lifestyle", symbol: "◇", sub: "The things that keep life well-rounded." },
-          ].map((item) => (
-            <motion.div
-              key={item.label}
-              variants={fadeUp}
-              whileHover={{ y: -5, transition: { duration: 0.25 } }}
-              className="rounded-[28px] border border-dashed border-white/15 bg-white/[0.03] p-8 space-y-4 text-center"
-            >
-              <div className="text-3xl text-slate-500">{item.symbol}</div>
-              <div className="text-slate-200 text-sm font-medium leading-6">{item.label}</div>
-              <div className="text-slate-500 text-xs leading-5">{item.sub}</div>
-              <div className="text-[10px] text-slate-600 uppercase tracking-[0.2em] pt-1">Coming soon</div>
-            </motion.div>
-          ))}
-        </motion.div>
+        <HobbySection hideHeader />
       </div>
     </motion.div>
   );
@@ -1162,7 +1139,6 @@ export default function PortfolioSite() {
               <TechStack />
               <Achievements />
               <Experience />
-              <HobbySection />
               <Education />
               <Contact />
               <BeyondWorkTeaser onInterests={() => setPage("interests")} />
