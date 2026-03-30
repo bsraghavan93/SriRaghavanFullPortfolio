@@ -3,22 +3,29 @@
 import React, { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  Activity,
   ArrowLeft,
+  ArrowRight,
+  Building2,
   ChevronDown,
   Cloud,
   Code2,
   Database,
   Download,
+  Github,
   GraduationCap,
   Heart,
   Layers3,
+  Linkedin,
   Mail,
   MapPin,
   Monitor,
   Phone,
+  Rocket,
   Sparkles,
   Trophy,
-  User,
+  Users,
+  Zap,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
@@ -42,12 +49,53 @@ type TechLayer = {
   items: string[];
 };
 
+type Achievement = {
+  icon: React.ElementType;
+  number: string;
+  project: string;
+  title: string;
+  text: string;
+  iconBg: string;
+};
+
+type ValueProp = {
+  icon: React.ElementType;
+  title: string;
+  desc: string;
+};
+
 // ─── DATA ─────────────────────────────────────────────────────────────────────
+const GITHUB_URL = "https://github.com/bsraghavan93";
+const LINKEDIN_URL = "#"; // TODO: replace with your LinkedIn profile URL
+
 const SKILL_HIGHLIGHTS = [
   "Lead Full-Stack .NET Developer",
   "Cloud & Microservices Architect",
   "Agile & DevOps Leader",
   "Azure · AWS · GCP Multi-Cloud",
+];
+
+const VALUE_PROPS: ValueProp[] = [
+  {
+    icon: Layers3,
+    title: "Architecture & API Orchestration",
+    desc: "Designing scalable microservices, RESTful APIs, and event-driven pipelines that process millions of transactions with resilience and speed.",
+  },
+  {
+    icon: Building2,
+    title: "Enterprise Modernization",
+    desc: "Migrating legacy platforms to .NET Core, cloud-native Azure, and automated CI/CD — across government, finance, and enterprise clients.",
+  },
+  {
+    icon: Zap,
+    title: "Performance & Scalability",
+    desc: "Reducing latency 70%, cutting deployment times 94%, and architecting autoscaling infrastructure that handles 10K+ concurrent requests.",
+  },
+  {
+    icon: Users,
+    title: "Cross-Functional Leadership",
+    desc: "Leading distributed teams, aligning stakeholders, and driving complex delivery from architecture through production deployment.",
+  },
 ];
 
 const TECH_LAYERS: TechLayer[] = [
@@ -89,34 +137,38 @@ const TECH_LAYERS: TechLayer[] = [
   },
 ];
 
-const ACHIEVEMENTS = [
+const ACHIEVEMENTS: Achievement[] = [
   {
-    icon: Trophy,
+    icon: Zap,
     number: "01",
     project: "United Airlines – Loyalty & Accrual Redemptions",
     title: "Transformed Manual Booking into One-Click Automation",
     text: "Engineered an Upgrade Manager API powering the Navigator system — converting multi-hour manual upgrade workflows into instant one-click operations, drastically improving agent efficiency and customer turnaround time.",
+    iconBg: "bg-cyan-400/10 text-cyan-300 group-hover:bg-cyan-400/20",
   },
   {
-    icon: Sparkles,
+    icon: Rocket,
     number: "02",
-    project: "New Jersey Treasury – Claims Modernization",
-    title: "Accelerated Claim Processing Across State Systems",
-    text: "Led modernization of legacy claim processing applications to .NET Core & Azure — improving system reliability, strengthening security, and significantly reducing processing time for high-volume state-wide claims.",
+    project: "United Airlines – Loyalty & Accrual Redemptions",
+    title: "Cut Deployment Time by 94%",
+    text: "Built Azure DevOps CI/CD pipelines with blue-green deployments — reducing release time from 4 hours to 15 minutes with zero-downtime production deployments.",
+    iconBg: "bg-violet-400/10 text-violet-300 group-hover:bg-violet-400/20",
   },
   {
-    icon: Layers3,
+    icon: Activity,
     number: "03",
-    project: "United Airlines – Inflight Records System",
-    title: "Improved Application Performance by 30%+",
-    text: "Optimized frontend and backend performance using React, Next.js, and SQL tuning — reducing load times and enhancing real-time data access for mission-critical inflight operations.",
+    project: "United Airlines – Loyalty & Accrual Redemptions",
+    title: "Reduced MTTR by 60% & API Latency by 70%",
+    text: "Configured Kibana and Dynatrace monitoring and implemented Redis caching for loyalty services — improving observability, reducing incident resolution time, and accelerating API performance.",
+    iconBg: "bg-emerald-400/10 text-emerald-300 group-hover:bg-emerald-400/20",
   },
   {
-    icon: Code2,
+    icon: Building2,
     number: "04",
-    project: "Rocket Mortgage – Loan Processing Platform",
-    title: "Boosted User Engagement by 50%",
-    text: "Built high-performance web applications using Next.js and .NET microservices — improving page load speed, SEO ranking, and increasing user engagement by over 50% in loan processing workflows.",
+    project: "New Jersey Treasury – Claims Modernization",
+    title: "Accelerated State Claim Processing Modernization",
+    text: "Led modernization of legacy claims platforms to .NET Core and Azure — improving reliability, security, and processing efficiency for high-volume government workflows.",
+    iconBg: "bg-orange-400/10 text-orange-300 group-hover:bg-orange-400/20",
   },
 ];
 
@@ -290,7 +342,7 @@ function Nav({ onInterests }: { onInterests: () => void }) {
       <div className="hidden md:flex items-center gap-6 text-[13px] text-slate-400">
         {[
           { id: "stack", label: "Stack" },
-          { id: "achievements", label: "Achievements" },
+          { id: "achievements", label: "Impact" },
           { id: "experience", label: "Experience" },
           { id: "education", label: "Education" },
           { id: "contact", label: "Contact" },
@@ -331,69 +383,80 @@ function Hero() {
   const experienceYears = useMemo(() => new Date().getFullYear() - 2015, []);
 
   return (
-    <section className="relative min-h-[92vh] flex flex-col justify-center px-6 md:px-12 py-24">
+    <section className="relative min-h-[96vh] flex flex-col justify-center px-6 md:px-12 py-28 md:py-32">
       <motion.div
         variants={stagger}
         initial="hidden"
         animate="visible"
-        className="max-w-5xl space-y-9"
+        className="max-w-4xl space-y-8"
       >
         {/* Eyebrow */}
-        <motion.div variants={fadeUp}>
-          <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-400/10 px-4 py-1.5 text-sm text-cyan-300">
-            <User className="h-3.5 w-3.5" />
-            Senior Professional Portfolio &nbsp;·&nbsp; {experienceYears}+ Years in the IT Domain
-          </div>
+        <motion.div variants={fadeUp} className="flex items-center gap-3">
+          <span className="h-px w-8 bg-cyan-400/50" />
+          <span className="text-xs uppercase tracking-[0.28em] text-cyan-400/80 font-medium">
+            {experienceYears}+ Years · Enterprise Engineering
+          </span>
         </motion.div>
 
         {/* Name */}
-        <motion.div variants={fadeUp} className="space-y-1">
-          <h1 className="text-[clamp(3rem,9vw,7rem)] font-bold tracking-tight leading-none text-white">
+        <motion.div variants={fadeUp} className="space-y-0">
+          <h1 className="text-[clamp(2.8rem,8vw,5.5rem)] font-bold tracking-tight leading-[1.04] text-white">
             Sri Raghavan
           </h1>
-          <h1 className="text-[clamp(3rem,9vw,7rem)] font-bold tracking-tight leading-none text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-violet-400 to-fuchsia-400">
+          <h1 className="text-[clamp(2.8rem,8vw,5.5rem)] font-bold tracking-tight leading-[1.04] text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-violet-400">
             Balasundaram
           </h1>
         </motion.div>
 
-        {/* Description */}
-        <motion.p variants={fadeUp} className="max-w-2xl text-lg leading-8 text-slate-400">
-          With over {experienceYears} years of enriching experience in the IT domain, I have carved a niche in designing, developing, and maintaining enterprise web applications — leveraging .NET technologies, modern front-end frameworks, and cloud services to drive digital transformation.
+        {/* Title line */}
+        <motion.p variants={fadeUp} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-lg md:text-xl font-medium text-slate-300">
+          <span>Lead Full Stack .NET Engineer</span>
+          <span className="hidden md:inline text-slate-600">·</span>
+          <span className="text-slate-500 text-base font-normal">Cloud · Microservices · Architecture</span>
         </motion.p>
 
-        {/* Skill badges */}
-        <motion.div variants={fadeUp} className="flex flex-wrap gap-2.5">
-          {SKILL_HIGHLIGHTS.map((skill) => (
-            <span
-              key={skill}
-              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200 backdrop-blur-sm"
+        {/* Value proposition */}
+        <motion.p variants={fadeUp} className="max-w-2xl text-base md:text-lg leading-7 text-slate-400">
+          {experienceYears}+ years building enterprise systems at scale — loyalty platforms, government modernization, and cloud-native microservices. I ship fast, architect for resilience, and lead teams that deliver.
+        </motion.p>
+
+        {/* Metric chips */}
+        <motion.div variants={fadeUp} className="flex flex-wrap gap-3">
+          {[
+            { value: "94%", label: "Faster Deployments", border: "border-cyan-400/20 bg-cyan-400/5", text: "text-cyan-300" },
+            { value: "70%", label: "Lower API Latency", border: "border-violet-400/20 bg-violet-400/5", text: "text-violet-300" },
+            { value: "10K+", label: "Concurrent Requests", border: "border-emerald-400/20 bg-emerald-400/5", text: "text-emerald-300" },
+          ].map(({ value, label, border, text }) => (
+            <div
+              key={label}
+              className={`flex items-center gap-2.5 px-4 py-2.5 rounded-full border backdrop-blur-sm ${border}`}
             >
-              {skill}
-            </span>
+              <span className={`font-bold text-sm ${text}`}>{value}</span>
+              <span className="text-slate-400 text-sm">{label}</span>
+            </div>
           ))}
         </motion.div>
 
         {/* CTAs */}
-        <motion.div variants={fadeUp} className="flex flex-wrap gap-4">
+        <motion.div variants={fadeUp} className="flex flex-wrap gap-4 pt-1">
           <button
-            onClick={() => document.getElementById("experience")?.scrollIntoView({ behavior: "smooth" })}
-            className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-100 transition-colors duration-200"
+            onClick={() => document.getElementById("achievements")?.scrollIntoView({ behavior: "smooth" })}
+            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-6 py-3 text-sm font-semibold text-white hover:opacity-90 transition-opacity duration-200"
           >
-            View Experience
+            View Projects <ArrowRight className="h-4 w-4" />
           </button>
           <a
             href={RESUME_PATH}
             download
-            className="flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-6 py-3 text-sm font-medium text-cyan-300 hover:bg-cyan-400/20 transition-colors duration-200"
+            className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-semibold text-white hover:border-white/25 hover:bg-white/10 transition-all duration-200 backdrop-blur-sm"
           >
-            <Download className="h-4 w-4" />
-            Download Resume
+            <Download className="h-4 w-4" /> Resume
           </a>
           <button
             onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}
-            className="rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-medium text-white hover:bg-white/10 transition-colors duration-200 backdrop-blur-sm"
+            className="inline-flex items-center gap-2 rounded-full border border-white/10 px-6 py-3 text-sm font-medium text-slate-300 hover:text-white hover:border-white/20 transition-all duration-200"
           >
-            Get In Touch
+            Contact Me
           </button>
         </motion.div>
       </motion.div>
@@ -402,11 +465,68 @@ function Hero() {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 1.2, duration: 0.6 }}
+        transition={{ delay: 1.4, duration: 0.6 }}
         className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-slate-600"
       >
-        <div className="h-10 w-px bg-gradient-to-b from-transparent to-slate-600" />
+        <motion.div
+          animate={{ y: [0, 5, 0] }}
+          transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }}
+          className="h-10 w-px bg-gradient-to-b from-transparent to-slate-600"
+        />
         <span className="text-xs tracking-[0.2em] uppercase">Scroll</span>
+      </motion.div>
+    </section>
+  );
+}
+
+// ─── WHAT I BRING ─────────────────────────────────────────────────────────────
+function WhatIBring() {
+  return (
+    <section id="value" className="px-6 md:px-12 py-20 space-y-12">
+      <motion.div
+        variants={stagger}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-80px" }}
+        className="space-y-4 max-w-2xl"
+      >
+        <motion.div variants={fadeUp}>
+          <SectionPill icon={Zap} label="What I Bring" />
+        </motion.div>
+        <motion.h2 variants={fadeUp} className="text-4xl md:text-5xl font-bold text-white leading-tight">
+          More than a developer.{" "}
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-violet-400">
+            An engineering force.
+          </span>
+        </motion.h2>
+        <motion.p variants={fadeUp} className="text-slate-400 text-base leading-7">
+          I combine deep technical depth with product thinking and team leadership to build systems that matter at enterprise scale.
+        </motion.p>
+      </motion.div>
+
+      <motion.div
+        variants={stagger}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-60px" }}
+        className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4"
+      >
+        {VALUE_PROPS.map(({ icon: Icon, title, desc }) => (
+          <motion.div
+            key={title}
+            variants={fadeUp}
+            whileHover={{ y: -6, transition: { duration: 0.25 } }}
+            className="group rounded-[24px] border border-white/8 bg-white/[0.03] p-6 space-y-4 hover:border-cyan-400/20 hover:bg-white/[0.06] transition-all duration-300"
+          >
+            <div className="rounded-xl bg-cyan-400/8 p-2.5 w-fit text-cyan-300 group-hover:bg-cyan-400/15 transition-colors duration-200">
+              <Icon className="h-5 w-5" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-white font-semibold text-sm leading-snug">{title}</h3>
+              <p className="text-slate-500 text-sm leading-6">{desc}</p>
+            </div>
+          </motion.div>
+        ))}
       </motion.div>
     </section>
   );
@@ -515,19 +635,19 @@ function Achievements() {
               key={item.title}
               variants={fadeUp}
               whileHover={{ y: -6, transition: { duration: 0.25 } }}
-              className="group rounded-[28px] border border-white/10 bg-white/5 p-8 backdrop-blur-sm space-y-6"
+              className="group rounded-[28px] border border-white/10 bg-white/5 p-7 backdrop-blur-sm space-y-5 hover:border-white/18 transition-all duration-300"
             >
               <div className="flex items-start justify-between">
-                <div className="rounded-2xl bg-emerald-400/10 p-3 text-emerald-300 group-hover:bg-emerald-400/20 transition-colors duration-200">
+                <div className={`rounded-2xl p-3 transition-colors duration-200 ${item.iconBg}`}>
                   <Icon className="h-5 w-5" />
                 </div>
-                <span className="text-4xl font-bold text-white/[0.07] select-none">{item.number}</span>
+                <span className="text-3xl font-bold text-white/[0.06] select-none">{item.number}</span>
               </div>
-              <div className="space-y-3">
-                <p className="text-xs font-medium text-cyan-400/80 tracking-wide">{item.project}</p>
-                <h3 className="text-xl font-semibold text-white leading-snug">{item.title}</h3>
-                <p className="text-slate-400 text-sm leading-7">{item.text}</p>
+              <div className="space-y-2">
+                <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-cyan-400/60">{item.project}</p>
+                <h3 className="text-base font-semibold text-white leading-snug">{item.title}</h3>
               </div>
+              <p className="text-slate-500 text-sm leading-6">{item.text}</p>
             </motion.div>
           );
         })}
@@ -736,6 +856,11 @@ function Contact() {
     { icon: MapPin, label: "Location", value: "United States", href: null },
   ];
 
+  const socials = [
+    { icon: Github, label: "GitHub", href: GITHUB_URL },
+    { icon: Linkedin, label: "LinkedIn", href: LINKEDIN_URL },
+  ];
+
   return (
     <section id="contact" className="px-6 md:px-12 py-24 space-y-14">
       <motion.div
@@ -786,12 +911,34 @@ function Contact() {
           </div>
         </div>
 
+        {/* Social links */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.15, duration: 0.5 }}
+          className="flex gap-3"
+        >
+          {socials.map(({ icon: Icon, label, href }) => (
+            <a
+              key={label}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center gap-3 rounded-[20px] border border-white/10 bg-white/5 px-6 py-4 hover:bg-white/8 hover:border-white/20 transition-all duration-200 backdrop-blur-sm flex-1 justify-center"
+            >
+              <Icon className="h-5 w-5 text-slate-400 group-hover:text-white transition-colors duration-200" />
+              <span className="text-slate-300 text-sm font-medium group-hover:text-white transition-colors duration-200">{label}</span>
+            </a>
+          ))}
+        </motion.div>
+
         {/* Resume download CTA */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ delay: 0.2, duration: 0.5 }}
+          transition={{ delay: 0.25, duration: 0.5 }}
         >
           <a
             href={RESUME_PATH}
@@ -818,6 +965,40 @@ function Footer() {
     <footer className="px-6 md:px-12 py-10 border-t border-white/5 text-center text-sm text-slate-600">
       © {new Date().getFullYear()} Sri Raghavan Balasundaram
     </footer>
+  );
+}
+
+// ─── BEYOND WORK TEASER ───────────────────────────────────────────────────────
+function BeyondWorkTeaser({ onInterests }: { onInterests: () => void }) {
+  return (
+    <section className="px-6 md:px-12 pb-16">
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-40px" }}
+        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
+        whileHover={{ y: -4, transition: { duration: 0.25 } }}
+        onClick={onInterests}
+        className="cursor-pointer rounded-[32px] border border-white/8 bg-gradient-to-br from-pink-500/8 via-violet-500/5 to-transparent p-8 md:p-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 hover:border-pink-500/20 transition-all duration-300"
+      >
+        <div className="space-y-3">
+          <div className="flex items-center gap-2.5">
+            <div className="rounded-xl bg-pink-500/10 p-2 text-pink-400">
+              <Heart className="h-4 w-4" />
+            </div>
+            <span className="text-xs uppercase tracking-[0.25em] text-pink-400/80 font-medium">Beyond Work</span>
+          </div>
+          <h3 className="text-xl md:text-2xl font-bold text-white">Life outside the terminal</h3>
+          <p className="text-slate-400 text-sm leading-6 max-w-md">
+            Photography, travel, and the experiences that fuel creativity and perspective in engineering.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors duration-200 shrink-0">
+          <span className="text-sm font-medium">Explore</span>
+          <ArrowRight className="h-4 w-4" />
+        </div>
+      </motion.div>
+    </section>
   );
 }
 
@@ -874,9 +1055,9 @@ function InterestsPage({ onBack }: { onBack: () => void }) {
           className="grid gap-5 md:grid-cols-3"
         >
           {[
-            { label: "Photography & Creative Work", symbol: "◈" },
-            { label: "Technology Exploration", symbol: "◎" },
-            { label: "Personal Interests & Lifestyle", symbol: "◇" },
+            { label: "Photography & Visual Storytelling", symbol: "◈", sub: "Capturing moments, light, and perspective." },
+            { label: "Travel & Exploration", symbol: "◎", sub: "New places, cultures, and inspiration." },
+            { label: "Personal Interests & Lifestyle", symbol: "◇", sub: "The things that keep life well-rounded." },
           ].map((item) => (
             <motion.div
               key={item.label}
@@ -885,8 +1066,9 @@ function InterestsPage({ onBack }: { onBack: () => void }) {
               className="rounded-[28px] border border-dashed border-white/15 bg-white/[0.03] p-8 space-y-4 text-center"
             >
               <div className="text-3xl text-slate-500">{item.symbol}</div>
-              <div className="text-slate-300 text-sm leading-6">{item.label}</div>
-              <div className="text-xs text-slate-600 uppercase tracking-[0.2em]">Coming soon</div>
+              <div className="text-slate-200 text-sm font-medium leading-6">{item.label}</div>
+              <div className="text-slate-500 text-xs leading-5">{item.sub}</div>
+              <div className="text-[10px] text-slate-600 uppercase tracking-[0.2em] pt-1">Coming soon</div>
             </motion.div>
           ))}
         </motion.div>
@@ -917,11 +1099,13 @@ export default function PortfolioSite() {
             <Nav onInterests={() => setPage("interests")} />
             <div className="max-w-7xl mx-auto">
               <Hero />
+              <WhatIBring />
               <TechStack />
               <Achievements />
               <Experience />
               <Education />
               <Contact />
+              <BeyondWorkTeaser onInterests={() => setPage("interests")} />
             </div>
             <Footer />
           </div>
