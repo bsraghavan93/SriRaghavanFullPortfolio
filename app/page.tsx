@@ -24,6 +24,7 @@ import {
   Sparkles,
   Trophy,
   Users,
+  Wrench,
   Zap,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
@@ -117,15 +118,6 @@ const TECH_LAYERS: TechLayer[] = [
     items: ["Angular 2–18", "React 18", "Vue.js", "Blazor", "TypeScript", "Next.js", "JavaScript", "HTML5", "CSS3", "Bootstrap", "SASS"],
   },
   {
-    id: "data",
-    label: "Data & Messaging",
-    icon: Database,
-    border: "border-emerald-500/30",
-    gradient: "from-emerald-500/15 via-emerald-500/5 to-transparent",
-    chip: "bg-emerald-500/20 text-emerald-200 border-emerald-500/25",
-    items: ["SQL Server", "MongoDB", "Cosmos DB", "Redis", "RabbitMQ", "Kafka", "T-SQL", "PL/SQL", "SSIS", "SSRS", "Azure Synapse"],
-  },
-  {
     id: "cloud",
     label: "Cloud & DevOps",
     icon: Cloud,
@@ -133,6 +125,24 @@ const TECH_LAYERS: TechLayer[] = [
     gradient: "from-orange-500/15 via-orange-500/5 to-transparent",
     chip: "bg-orange-500/20 text-orange-200 border-orange-500/25",
     items: ["Azure", "AWS", "GCP", "Docker", "Kubernetes", "Azure DevOps", "CI/CD", "GitHub Actions", "Jenkins", "PowerShell", "Terraform"],
+  },
+  {
+    id: "databases",
+    label: "Databases",
+    icon: Database,
+    border: "border-emerald-500/30",
+    gradient: "from-emerald-500/15 via-emerald-500/5 to-transparent",
+    chip: "bg-emerald-500/20 text-emerald-200 border-emerald-500/25",
+    items: ["SQL Server", "MongoDB", "Cosmos DB", "Redis", "T-SQL", "PL/SQL", "SSIS", "SSRS", "Azure Synapse"],
+  },
+  {
+    id: "tools",
+    label: "Tools & Platforms",
+    icon: Wrench,
+    border: "border-fuchsia-500/30",
+    gradient: "from-fuchsia-500/15 via-fuchsia-500/5 to-transparent",
+    chip: "bg-fuchsia-500/20 text-fuchsia-200 border-fuchsia-500/25",
+    items: ["RabbitMQ", "Kafka", "ReadyAPI", "Power BI", "SignalR", "Git", "Dynatrace", "Kibana", "OnBase", "JIRA"],
   },
 ];
 
@@ -420,18 +430,19 @@ function Hero() {
         </motion.p>
 
         {/* Metric chips */}
-        <motion.div variants={fadeUp} className="flex flex-wrap gap-3">
+        <motion.div variants={fadeUp} className="flex flex-wrap gap-4">
           {[
-            { value: "94%", label: "Faster Deployments", border: "border-cyan-400/20 bg-cyan-400/5", text: "text-cyan-300" },
-            { value: "70%", label: "Lower API Latency", border: "border-violet-400/20 bg-violet-400/5", text: "text-violet-300" },
-            { value: "10K+", label: "Concurrent Requests", border: "border-emerald-400/20 bg-emerald-400/5", text: "text-emerald-300" },
-          ].map(({ value, label, border, text }) => (
+            { value: "94%", label: "Faster Deployments", bg: "bg-cyan-400/8", border: "border-cyan-400/20", val: "text-cyan-300", sep: "bg-cyan-400/20" },
+            { value: "70%", label: "Lower API Latency", bg: "bg-violet-400/8", border: "border-violet-400/20", val: "text-violet-300", sep: "bg-violet-400/20" },
+            { value: "10K+", label: "Concurrent Requests", bg: "bg-emerald-400/8", border: "border-emerald-400/20", val: "text-emerald-300", sep: "bg-emerald-400/20" },
+          ].map(({ value, label, bg, border, val, sep }) => (
             <div
               key={label}
-              className={`flex items-center gap-2.5 px-4 py-2.5 rounded-full border backdrop-blur-sm ${border}`}
+              className={`flex items-center gap-3 px-5 py-3 rounded-2xl border backdrop-blur-sm ${bg} ${border}`}
             >
-              <span className={`font-bold text-sm ${text}`}>{value}</span>
-              <span className="text-slate-400 text-sm">{label}</span>
+              <span className={`font-extrabold text-xl leading-none ${val}`}>{value}</span>
+              <div className={`w-px h-6 ${sep}`} />
+              <span className="text-slate-400 text-xs leading-tight max-w-[72px]">{label}</span>
             </div>
           ))}
         </motion.div>
@@ -440,20 +451,13 @@ function Hero() {
         <motion.div variants={fadeUp} className="flex flex-wrap gap-4 pt-1">
           <button
             onClick={() => document.getElementById("achievements")?.scrollIntoView({ behavior: "smooth" })}
-            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-6 py-3 text-sm font-semibold text-white hover:opacity-90 transition-opacity duration-200"
+            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-7 py-3.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity duration-200 shadow-lg shadow-cyan-500/20"
           >
             View Projects <ArrowRight className="h-4 w-4" />
           </button>
-          <a
-            href={RESUME_PATH}
-            download
-            className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-semibold text-white hover:border-white/25 hover:bg-white/10 transition-all duration-200 backdrop-blur-sm"
-          >
-            <Download className="h-4 w-4" /> Resume
-          </a>
           <button
             onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}
-            className="inline-flex items-center gap-2 rounded-full border border-white/10 px-6 py-3 text-sm font-medium text-slate-300 hover:text-white hover:border-white/20 transition-all duration-200"
+            className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-7 py-3.5 text-sm font-semibold text-white hover:border-white/25 hover:bg-white/10 transition-all duration-200 backdrop-blur-sm"
           >
             Contact Me
           </button>
@@ -655,6 +659,58 @@ function Achievements() {
   );
 }
 
+// ─── CLIENT LOGOS ─────────────────────────────────────────────────────────────
+const CLIENT_LOGO_MAP: Record<string, { initials: string; bg: string; text: string; ring: string }> = {
+  "United Airlines – Loyalty & Accrual Redemptions": {
+    initials: "UA",
+    bg: "bg-blue-950",
+    text: "text-blue-200",
+    ring: "ring-blue-500/40",
+  },
+  "New Jersey Treasury (State of New Jersey)": {
+    initials: "NJ",
+    bg: "bg-green-950",
+    text: "text-green-200",
+    ring: "ring-green-500/40",
+  },
+  "United Airlines – Inflight Records": {
+    initials: "UA",
+    bg: "bg-blue-950",
+    text: "text-blue-200",
+    ring: "ring-blue-500/40",
+  },
+  "Quicken Loans / Rocket Mortgage": {
+    initials: "RM",
+    bg: "bg-red-950",
+    text: "text-red-200",
+    ring: "ring-red-500/40",
+  },
+  LinkedIn: {
+    initials: "in",
+    bg: "bg-sky-950",
+    text: "text-sky-100",
+    ring: "ring-sky-500/40",
+  },
+  "Wells Fargo": {
+    initials: "WF",
+    bg: "bg-red-950",
+    text: "text-yellow-200",
+    ring: "ring-yellow-500/30",
+  },
+};
+
+function ClientLogo({ client }: { client: string }) {
+  const logo = CLIENT_LOGO_MAP[client];
+  if (!logo) return null;
+  return (
+    <div
+      className={`flex-shrink-0 h-11 w-11 rounded-xl ring-1 ${logo.ring} ${logo.bg} flex items-center justify-center`}
+    >
+      <span className={`text-xs font-bold tracking-tight ${logo.text}`}>{logo.initials}</span>
+    </div>
+  );
+}
+
 // ─── EXPERIENCE ───────────────────────────────────────────────────────────────
 function Experience() {
   const [open, setOpen] = useState<number>(0);
@@ -719,13 +775,16 @@ function Experience() {
                     className="w-full text-left p-6 md:p-8"
                   >
                     <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-1.5">
+                      <div className="space-y-1.5 flex-1">
                         <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
                           {project.period}
                         </p>
-                        <h3 className="text-xl md:text-2xl font-semibold text-white">
-                          {project.client}
-                        </h3>
+                        <div className="flex items-center gap-3">
+                          <ClientLogo client={project.client} />
+                          <h3 className="text-xl md:text-2xl font-semibold text-white leading-snug">
+                            {project.client}
+                          </h3>
+                        </div>
                         <p className="text-cyan-400 text-sm">{project.role}</p>
                         <p className="text-slate-400 text-sm mt-3 max-w-2xl leading-6">
                           {project.summary}
