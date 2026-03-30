@@ -663,12 +663,12 @@ function Achievements() {
 
 // ─── CLIENT LOGOS ─────────────────────────────────────────────────────────────
 const CLIENT_LOGO_MAP: Record<string, string> = {
-  "United Airlines – Loyalty & Accrual Redemptions": "/assets/Client Logos/United_logo.png",
-  "New Jersey Treasury (State of New Jersey)": "/assets/Client Logos/NJ_logo.png",
-  "United Airlines – Inflight Records": "/assets/Client Logos/United_logo.png",
-  "Quicken Loans / Rocket Mortgage": "/assets/Client Logos/Rocket-Mortgage_logo.png",
-  LinkedIn: "/assets/Client Logos/linkedin_logo.svg",
-  "Wells Fargo": "/assets/Client Logos/Wells-Fargo_logo.png",
+  "United Airlines – Loyalty & Accrual Redemptions": "/assets/client-logos/United_logo.png",
+  "New Jersey Treasury (State of New Jersey)": "/assets/client-logos/NJ_logo.png",
+  "United Airlines – Inflight Records": "/assets/client-logos/United_logo.png",
+  "Quicken Loans / Rocket Mortgage": "/assets/client-logos/Rocket-Mortgage_logo.png",
+  LinkedIn: "/assets/client-logos/linkedin_logo.svg",
+  "Wells Fargo": "/assets/client-logos/Wells-Fargo_logo.png",
 };
 
 function ClientLogo({ client }: { client: string }) {
