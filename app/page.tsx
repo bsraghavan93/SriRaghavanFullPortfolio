@@ -94,18 +94,21 @@ const ACHIEVEMENTS = [
     icon: Trophy,
     number: "01",
     title: "Cut Deployment Time by 94%",
+    project: "United Airlines – Loyalty & Accrual Redemptions",
     text: "Built Azure DevOps CI/CD pipelines with blue-green deployments at United Airlines — reducing release time from 4 hours to just 15 minutes with zero-downtime production deployments.",
   },
   {
     icon: Sparkles,
     number: "02",
     title: "Reduced MTTR by 60% & API Latency by 70%",
+    project: "United Airlines – Loyalty & Accrual Redemptions",
     text: "Configured Kibana and Dynatrace APM for proactive monitoring, and implemented Redis caching for loyalty data — driving a 70% improvement in API response times.",
   },
   {
     icon: Layers3,
     number: "03",
     title: "Scaled to 10,000+ Concurrent Requests",
+    project: "United Airlines – Loyalty & Accrual Redemptions",
     text: "Built microservices with .NET Core 6, Docker, and Kubernetes at United Airlines with horizontal pod autoscaling and load balancing to handle peak loyalty transaction traffic.",
   },
 ];
@@ -514,6 +517,7 @@ function Achievements() {
                 <span className="text-4xl font-bold text-white/[0.07] select-none">{item.number}</span>
               </div>
               <div className="space-y-3">
+                <p className="text-xs font-medium text-cyan-400/80 tracking-wide">{item.project}</p>
                 <h3 className="text-xl font-semibold text-white leading-snug">{item.title}</h3>
                 <p className="text-slate-400 text-sm leading-7">{item.text}</p>
               </div>
@@ -548,7 +552,7 @@ function Experience() {
           </span>
         </motion.h2>
         <motion.p variants={fadeUp} className="text-slate-400 max-w-2xl text-base leading-7">
-          {PROJECTS.length} enterprise engagements across loyalty, government, airline, mortgage, and technology. Most recent expanded — click any to explore.
+          {PROJECTS.length} enterprise engagements across loyalty, government, airline, mortgage, and technology.
         </motion.p>
       </motion.div>
 
