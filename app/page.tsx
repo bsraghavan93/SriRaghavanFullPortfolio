@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import HobbySection from "@/components/HobbySection";
+import Image from "next/image";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 type Project = {
@@ -661,53 +662,27 @@ function Achievements() {
 }
 
 // ─── CLIENT LOGOS ─────────────────────────────────────────────────────────────
-const CLIENT_LOGO_MAP: Record<string, { initials: string; bg: string; text: string; ring: string }> = {
-  "United Airlines – Loyalty & Accrual Redemptions": {
-    initials: "UA",
-    bg: "bg-blue-950",
-    text: "text-blue-200",
-    ring: "ring-blue-500/40",
-  },
-  "New Jersey Treasury (State of New Jersey)": {
-    initials: "NJ",
-    bg: "bg-green-950",
-    text: "text-green-200",
-    ring: "ring-green-500/40",
-  },
-  "United Airlines – Inflight Records": {
-    initials: "UA",
-    bg: "bg-blue-950",
-    text: "text-blue-200",
-    ring: "ring-blue-500/40",
-  },
-  "Quicken Loans / Rocket Mortgage": {
-    initials: "RM",
-    bg: "bg-red-950",
-    text: "text-red-200",
-    ring: "ring-red-500/40",
-  },
-  LinkedIn: {
-    initials: "in",
-    bg: "bg-sky-950",
-    text: "text-sky-100",
-    ring: "ring-sky-500/40",
-  },
-  "Wells Fargo": {
-    initials: "WF",
-    bg: "bg-red-950",
-    text: "text-yellow-200",
-    ring: "ring-yellow-500/30",
-  },
+const CLIENT_LOGO_MAP: Record<string, string> = {
+  "United Airlines – Loyalty & Accrual Redemptions": "/assets/Client Logos/United_logo.png",
+  "New Jersey Treasury (State of New Jersey)": "/assets/Client Logos/NJ_logo.png",
+  "United Airlines – Inflight Records": "/assets/Client Logos/United_logo.png",
+  "Quicken Loans / Rocket Mortgage": "/assets/Client Logos/Rocket-Mortgage_logo.png",
+  LinkedIn: "/assets/Client Logos/linkedin_logo.svg",
+  "Wells Fargo": "/assets/Client Logos/Wells-Fargo_logo.png",
 };
 
 function ClientLogo({ client }: { client: string }) {
-  const logo = CLIENT_LOGO_MAP[client];
-  if (!logo) return null;
+  const src = CLIENT_LOGO_MAP[client];
+  if (!src) return null;
   return (
-    <div
-      className={`flex-shrink-0 h-11 w-11 rounded-xl ring-1 ${logo.ring} ${logo.bg} flex items-center justify-center`}
-    >
-      <span className={`text-xs font-bold tracking-tight ${logo.text}`}>{logo.initials}</span>
+    <div className="flex-shrink-0 h-11 w-11 flex items-center justify-center">
+      <Image
+        src={src}
+        alt={client}
+        width={44}
+        height={44}
+        className="h-full w-full object-contain"
+      />
     </div>
   );
 }
