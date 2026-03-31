@@ -1,0 +1,276 @@
+import { Camera, Film, Gamepad2, Mountain, Printer, Video } from "lucide-react";
+import { Hobby } from "./types";
+
+export const HOBBIES: Hobby[] = [
+  {
+    id: "photography",
+    title: "Photography",
+    category: "Visual Storytelling",
+    description:
+      "Capturing light, emotion, and the unseen stories hidden in everyday moments — one frame at a time. Street photography, portraits, and landscapes through a documentary lens.",
+    image: "/hobbies/photography.jpg",
+    icon: Camera,
+    gradient: "linear-gradient(135deg, #0f172a 0%, #0c4a6e 50%, #1e1b4b 100%)",
+    accentColor: "#38bdf8",
+    galleryStyle: "filmstrip",
+    featured: true,
+    gallery: [
+      {
+        id: "photo-1",
+        caption: "Golden hour, downtown",
+        imagePath: "/hobbies/photography-1.jpg",
+        gradient: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)",
+      },
+      {
+        id: "photo-2",
+        caption: "Street portrait, monsoon",
+        imagePath: "/hobbies/photography-2.jpg",
+        gradient: "linear-gradient(135deg, #0c4a6e 0%, #0f172a 100%)",
+      },
+      {
+        id: "photo-3",
+        caption: "Fog at dawn",
+        imagePath: "/hobbies/photography-3.jpg",
+        gradient: "linear-gradient(135deg, #1e1b4b 0%, #0c4a6e 60%, #0f172a 100%)",
+      },
+      {
+        id: "photo-4",
+        caption: "Long exposure, city lights",
+        imagePath: "/hobbies/photography-4.jpg",
+        gradient: "linear-gradient(135deg, #172554 0%, #0f172a 100%)",
+      },
+      {
+        id: "photo-5",
+        caption: "Silhouette at dusk",
+        imagePath: "/hobbies/photography-5.jpg",
+        gradient: "linear-gradient(135deg, #0c4a6e 0%, #1e1b4b 100%)",
+      },
+      {
+        id: "photo-6",
+        caption: "Reflections, rainy street",
+        imagePath: "/hobbies/photography-6.jpg",
+        gradient: "linear-gradient(135deg, #0f172a 0%, #075985 60%, #1e1b4b 100%)",
+      },
+    ],
+  },
+  {
+    id: "3d-printing",
+    title: "3D Printing",
+    category: "Fabrication",
+    description:
+      "Turning digital blueprints into tangible objects layer by layer. From functional enclosures and engineering parts to artistic sculptures and custom tooling.",
+    image: "/hobbies/3d-printing.jpg",
+    icon: Printer,
+    gradient: "linear-gradient(135deg, #1c1917 0%, #7c2d12 60%, #431407 100%)",
+    accentColor: "#f97316",
+    galleryStyle: "blueprint-grid",
+    gallery: [
+      {
+        id: "3dp-1",
+        caption: "Layer zero",
+        imagePath: "/hobbies/3dp-1.jpg",
+        gradient: "linear-gradient(135deg, #1c1917 0%, #7c2d12 100%)",
+      },
+      {
+        id: "3dp-2",
+        caption: "Structural lattice",
+        imagePath: "/hobbies/3dp-2.jpg",
+        gradient: "linear-gradient(135deg, #431407 0%, #9a3412 100%)",
+      },
+      {
+        id: "3dp-3",
+        caption: "Custom mount v3",
+        imagePath: "/hobbies/3dp-3.jpg",
+        gradient: "linear-gradient(135deg, #7c2d12 0%, #1c1917 100%)",
+      },
+      {
+        id: "3dp-4",
+        caption: "Tolerance test",
+        imagePath: "/hobbies/3dp-4.jpg",
+        gradient: "linear-gradient(135deg, #1c1917 0%, #c2410c 60%, #431407 100%)",
+      },
+      {
+        id: "3dp-5",
+        caption: "Final assembly",
+        imagePath: "/hobbies/3dp-5.jpg",
+        gradient: "linear-gradient(135deg, #9a3412 0%, #1c1917 100%)",
+      },
+      {
+        id: "3dp-6",
+        caption: "Print bed calibration",
+        imagePath: "/hobbies/3dp-6.jpg",
+        gradient: "linear-gradient(135deg, #431407 0%, #7c2d12 60%, #1c1917 100%)",
+      },
+    ],
+  },
+  {
+    id: "drone-videography",
+    title: "Drone Videography",
+    category: "Aerial Media",
+    description:
+      "Aerial perspectives that reframe how we see the world below. Sweeping reveals, low-altitude glides, and cinematic landscape coverage from above.",
+    image: "/hobbies/drone.jpg",
+    icon: Video,
+    gradient: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 60%, #0d1b35 100%)",
+    accentColor: "#60a5fa",
+    galleryStyle: "panoramic",
+    gallery: [
+      {
+        id: "drone-1",
+        caption: "Valley reveal, 400ft",
+        imagePath: "/hobbies/drone-1.jpg",
+        gradient: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)",
+      },
+      {
+        id: "drone-2",
+        caption: "Coastline at sunrise",
+        imagePath: "/hobbies/drone-2.jpg",
+        gradient: "linear-gradient(135deg, #0d1b35 0%, #1e3a8f 100%)",
+      },
+      {
+        id: "drone-3",
+        caption: "Urban grid, dusk",
+        imagePath: "/hobbies/drone-3.jpg",
+        gradient: "linear-gradient(135deg, #1e3a5f 0%, #0f172a 60%, #172554 100%)",
+      },
+      {
+        id: "drone-4",
+        caption: "Forest canopy",
+        imagePath: "/hobbies/drone-4.jpg",
+        gradient: "linear-gradient(135deg, #0d1b35 0%, #0f4c3a 100%)",
+      },
+      {
+        id: "drone-5",
+        caption: "Low-pass river",
+        imagePath: "/hobbies/drone-5.jpg",
+        gradient: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)",
+      },
+    ],
+  },
+  {
+    id: "multimedia-editing",
+    title: "Multimedia Editing",
+    category: "Post Production",
+    description:
+      "Weaving footage, music, and motion into compelling visual stories. Color grading, motion graphics, and audio design for short films and branded content.",
+    image: "/hobbies/multimedia.jpg",
+    icon: Film,
+    gradient: "linear-gradient(135deg, #1e1b4b 0%, #4c1d95 60%, #831843 100%)",
+    accentColor: "#c084fc",
+    galleryStyle: "timeline-strip",
+    gallery: [
+      {
+        id: "media-1",
+        caption: "Title sequence",
+        imagePath: "/hobbies/media-1.jpg",
+        gradient: "linear-gradient(135deg, #1e1b4b 0%, #4c1d95 100%)",
+      },
+      {
+        id: "media-2",
+        caption: "Color grade pass",
+        imagePath: "/hobbies/media-2.jpg",
+        gradient: "linear-gradient(135deg, #4c1d95 0%, #831843 100%)",
+      },
+      {
+        id: "media-3",
+        caption: "Motion type",
+        imagePath: "/hobbies/media-3.jpg",
+        gradient: "linear-gradient(135deg, #831843 0%, #1e1b4b 100%)",
+      },
+      {
+        id: "media-4",
+        caption: "Audio sync",
+        imagePath: "/hobbies/media-4.jpg",
+        gradient: "linear-gradient(135deg, #1e1b4b 0%, #6d28d9 60%, #831843 100%)",
+      },
+      {
+        id: "media-5",
+        caption: "Final export",
+        imagePath: "/hobbies/media-5.jpg",
+        gradient: "linear-gradient(135deg, #4c1d95 0%, #1e1b4b 100%)",
+      },
+    ],
+  },
+  {
+    id: "travel",
+    title: "Travel & Adventure",
+    category: "Exploration",
+    description:
+      "Chasing new horizons, cultures, and perspectives across the globe. Every trip reshapes how I think about systems, people, and design.",
+    image: "/hobbies/travel.jpg",
+    icon: Mountain,
+    gradient: "linear-gradient(135deg, #022c22 0%, #0f4c3a 60%, #134e4a 100%)",
+    accentColor: "#34d399",
+    galleryStyle: "panoramic",
+    gallery: [
+      {
+        id: "travel-1",
+        caption: "High altitude meadow",
+        imagePath: "/hobbies/travel-1.jpg",
+        gradient: "linear-gradient(135deg, #022c22 0%, #0f4c3a 100%)",
+      },
+      {
+        id: "travel-2",
+        caption: "Old town at midnight",
+        imagePath: "/hobbies/travel-2.jpg",
+        gradient: "linear-gradient(135deg, #134e4a 0%, #022c22 100%)",
+      },
+      {
+        id: "travel-3",
+        caption: "Open road, monsoon",
+        imagePath: "/hobbies/travel-3.jpg",
+        gradient: "linear-gradient(135deg, #0f4c3a 0%, #134e4a 60%, #022c22 100%)",
+      },
+      {
+        id: "travel-4",
+        caption: "Fishing village, dusk",
+        imagePath: "/hobbies/travel-4.jpg",
+        gradient: "linear-gradient(135deg, #022c22 0%, #065f46 100%)",
+      },
+      {
+        id: "travel-5",
+        caption: "Mountain pass, 3200m",
+        imagePath: "/hobbies/travel-5.jpg",
+        gradient: "linear-gradient(135deg, #134e4a 0%, #022c22 100%)",
+      },
+    ],
+  },
+  {
+    id: "gaming",
+    title: "Gaming",
+    category: "Interactive",
+    description:
+      "Strategy, immersion, and worlds that sharpen problem-solving instincts. From tactical RPGs to competitive titles — gaming keeps the mind sharp.",
+    image: "/hobbies/gaming.jpg",
+    icon: Gamepad2,
+    gradient: "linear-gradient(135deg, #1a0536 0%, #3b0764 60%, #300a16 100%)",
+    accentColor: "#a78bfa",
+    galleryStyle: "depth-cards",
+    gallery: [
+      {
+        id: "gaming-1",
+        caption: "Open world explore",
+        imagePath: "/hobbies/gaming-1.jpg",
+        gradient: "linear-gradient(135deg, #1a0536 0%, #3b0764 100%)",
+      },
+      {
+        id: "gaming-2",
+        caption: "Tactical loadout",
+        imagePath: "/hobbies/gaming-2.jpg",
+        gradient: "linear-gradient(135deg, #3b0764 0%, #300a16 100%)",
+      },
+      {
+        id: "gaming-3",
+        caption: "Night session",
+        imagePath: "/hobbies/gaming-3.jpg",
+        gradient: "linear-gradient(135deg, #300a16 0%, #1a0536 100%)",
+      },
+      {
+        id: "gaming-4",
+        caption: "Boss encounter",
+        imagePath: "/hobbies/gaming-4.jpg",
+        gradient: "linear-gradient(135deg, #1a0536 0%, #4c0519 60%, #3b0764 100%)",
+      },
+    ],
+  },
+];
