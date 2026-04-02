@@ -1044,45 +1044,91 @@ function InterestsPage({ onBack }: { onBack: () => void }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.4 }}
-      className="min-h-screen bg-[#030711] text-white"
+      className="min-h-screen bg-[#21346e] text-white"
     >
-      <Background />
-      <div className="relative z-10 max-w-5xl mx-auto px-6 md:px-12 py-12 space-y-16">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors duration-200"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Portfolio
-        </button>
+      {/* ── Video Hero ───────────────────────────────────────────────────── */}
+      <section className="relative min-h-screen" style={{ background: "#21346e" }}>
+        {/* Background video */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+          src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260206_044704_dd33cb15-c23f-4cfc-aa09-a0465d4dcb54.mp4"
+        />
 
-        <motion.div
-          variants={stagger}
-          initial="hidden"
-          animate="visible"
-          className="space-y-6"
-        >
-          <motion.div variants={fadeUp}>
-            <div className="inline-flex items-center gap-2 rounded-full border border-pink-400/30 bg-pink-400/10 px-4 py-2 text-sm text-pink-300">
-              <Heart className="h-4 w-4" />
-              Beyond the Code
-            </div>
-          </motion.div>
-          <motion.div variants={fadeUp}>
-            <h1 className="text-5xl md:text-7xl font-bold text-white">
-              Hobbies &amp;
-              <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-violet-400">
-                Interests
-              </span>
-            </h1>
-          </motion.div>
-          <motion.p variants={fadeUp} className="text-slate-400 max-w-xl text-lg leading-8">
-            A glimpse into what drives curiosity outside of work. This section is coming soon — a more personal visual story.
-          </motion.p>
-        </motion.div>
+        {/* Back button */}
+        <div className="absolute top-6 left-6 z-20">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-sm text-white/70 hover:text-white transition-colors duration-200"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Portfolio
+          </button>
+        </div>
 
-        <HobbySection hideHeader />
+        {/* Hero content */}
+        <div className="relative z-10 container mx-auto px-6 md:px-12 pt-32 md:pt-48">
+          {/* Headline */}
+          <h1
+            style={{
+              fontFamily: "var(--font-rubik), sans-serif",
+              fontWeight: 700,
+              lineHeight: 0.98,
+              letterSpacing: "-3px",
+              textTransform: "uppercase",
+              color: "#ffffff",
+              fontSize: "clamp(60px, 10vw, 100px)",
+            }}
+          >
+            NEW ERA
+            <br />
+            OF DESIGN
+            <br />
+            STARTS NOW
+          </h1>
+
+          {/* CTA Button */}
+          <button
+            style={{ width: 184, height: 65, marginTop: 40 }}
+            className="relative flex items-center justify-center transition-transform duration-150 active:scale-95 hover:scale-105"
+          >
+            {/* SVG custom shape background */}
+            <svg
+              className="absolute inset-0 w-full h-full"
+              viewBox="0 0 184 65"
+              preserveAspectRatio="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M8 0 H176 Q184 0 184 8 V57 Q184 65 176 65 H8 Q0 65 0 57 V8 Q0 0 8 0 Z"
+                fill="white"
+              />
+            </svg>
+            <span
+              style={{
+                fontFamily: "var(--font-rubik), sans-serif",
+                fontWeight: 700,
+                fontSize: 20,
+                textTransform: "uppercase",
+                color: "#161a20",
+                position: "relative",
+                zIndex: 1,
+              }}
+            >
+              GET STARTED
+            </span>
+          </button>
+        </div>
+      </section>
+
+      {/* ── Hobby Grid ───────────────────────────────────────────────────── */}
+      <div className="relative bg-[#030711]">
+        <div className="max-w-5xl mx-auto px-6 md:px-12 py-16">
+          <HobbySection hideHeader />
+        </div>
       </div>
     </motion.div>
   );
