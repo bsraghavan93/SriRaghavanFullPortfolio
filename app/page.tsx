@@ -1038,95 +1038,178 @@ function BeyondWorkTeaser({ onInterests }: { onInterests: () => void }) {
 
 // ─── INTERESTS PAGE ───────────────────────────────────────────────────────────
 function InterestsPage({ onBack }: { onBack: () => void }) {
+  const [videoReady, setVideoReady] = React.useState(false);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.4 }}
-      className="min-h-screen bg-[#21346e] text-white"
+      transition={{ duration: 0.6 }}
+      className="text-white"
+      style={{ background: "#0a0e1a" }}
     >
-      {/* ── Video Hero ───────────────────────────────────────────────────── */}
-      <section className="relative min-h-screen" style={{ background: "#21346e" }}>
-        {/* Background video */}
+      {/* ── VIDEO HERO ───────────────────────────────────────────────────── */}
+      <section className="relative min-h-screen overflow-hidden" style={{ background: "#0d1525" }}>
+
+        {/* Poster / fallback shown until video is ready */}
+        <div
+          className="absolute inset-0 transition-opacity duration-700"
+          style={{
+            background: "linear-gradient(135deg, #0d1525 0%, #21346e 50%, #0d1525 100%)",
+            opacity: videoReady ? 0 : 1,
+            pointerEvents: "none",
+            zIndex: 1,
+          }}
+        />
+
+        {/* Background video — preload + crossOrigin for smoother start */}
         <video
           autoPlay
           loop
           muted
           playsInline
-          className="absolute inset-0 w-full h-full object-cover"
+          preload="auto"
+          onCanPlay={() => setVideoReady(true)}
+          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000"
+          style={{ opacity: videoReady ? 1 : 0, willChange: "opacity" }}
           src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260206_044704_dd33cb15-c23f-4cfc-aa09-a0465d4dcb54.mp4"
         />
 
+        {/* Cinematic dark vignette */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(ellipse at center, transparent 30%, rgba(6,8,18,0.55) 100%), linear-gradient(to bottom, rgba(6,8,18,0.35) 0%, transparent 25%, transparent 60%, rgba(6,8,18,0.85) 100%)",
+            zIndex: 2,
+          }}
+        />
+
         {/* Back button */}
-        <div className="absolute top-6 left-6 z-20">
+        <div className="absolute top-7 left-7 z-20">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-sm text-white/70 hover:text-white transition-colors duration-200"
+            className="group flex items-center gap-2 text-[13px] text-white/55 hover:text-white transition-all duration-300"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Portfolio
+            <ArrowLeft className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-0.5" />
+            <span style={{ fontFamily: "var(--font-rubik), sans-serif", fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", fontSize: 11 }}>
+              Portfolio
+            </span>
           </button>
         </div>
 
         {/* Hero content */}
-        <div className="relative z-10 container mx-auto px-6 md:px-12 pt-32 md:pt-48">
-          {/* Headline */}
-          <h1
-            style={{
-              fontFamily: "var(--font-rubik), sans-serif",
-              fontWeight: 700,
-              lineHeight: 0.98,
-              letterSpacing: "-3px",
-              textTransform: "uppercase",
-              color: "#ffffff",
-              fontSize: "clamp(60px, 10vw, 100px)",
-            }}
+        <div className="relative z-10 container mx-auto px-6 md:px-14 pt-36 md:pt-52">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
           >
-            NEW ERA
-            <br />
-            OF DESIGN
-            <br />
-            STARTS NOW
-          </h1>
-
-          {/* CTA Button */}
-          <button
-            style={{ width: 184, height: 65, marginTop: 40 }}
-            className="relative flex items-center justify-center transition-transform duration-150 active:scale-95 hover:scale-105"
-          >
-            {/* SVG custom shape background */}
-            <svg
-              className="absolute inset-0 w-full h-full"
-              viewBox="0 0 184 65"
-              preserveAspectRatio="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M8 0 H176 Q184 0 184 8 V57 Q184 65 176 65 H8 Q0 65 0 57 V8 Q0 0 8 0 Z"
-                fill="white"
-              />
-            </svg>
-            <span
+            <h1
               style={{
                 fontFamily: "var(--font-rubik), sans-serif",
-                fontWeight: 700,
-                fontSize: 20,
+                fontWeight: 800,
+                lineHeight: 0.95,
+                letterSpacing: "-3px",
                 textTransform: "uppercase",
-                color: "#161a20",
-                position: "relative",
-                zIndex: 1,
+                color: "#ffffff",
+                fontSize: "clamp(56px, 9vw, 100px)",
               }}
             >
-              GET STARTED
-            </span>
-          </button>
+              NEW ERA
+              <br />
+              OF DESIGN
+              <br />
+              <span style={{ color: "rgba(255,255,255,0.92)" }}>STARTS NOW</span>
+            </h1>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.4 }}
+          >
+            <button
+              style={{ width: 184, height: 65, marginTop: 44 }}
+              className="relative flex items-center justify-center transition-transform duration-200 ease-out hover:scale-105 active:scale-95"
+            >
+              <svg
+                className="absolute inset-0 w-full h-full"
+                viewBox="0 0 184 65"
+                preserveAspectRatio="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path d="M8 0 H176 Q184 0 184 8 V57 Q184 65 176 65 H8 Q0 65 0 57 V8 Q0 0 8 0 Z" fill="white" />
+              </svg>
+              <span
+                style={{
+                  fontFamily: "var(--font-rubik), sans-serif",
+                  fontWeight: 700,
+                  fontSize: 18,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                  color: "#0d1525",
+                  position: "relative",
+                  zIndex: 1,
+                }}
+              >
+                GET STARTED
+              </span>
+            </button>
+          </motion.div>
         </div>
+
+        {/* Scroll nudge */}
+        <motion.div
+          className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.2, duration: 0.8 }}
+        >
+          <span style={{ fontFamily: "var(--font-rubik), sans-serif", fontSize: 9, letterSpacing: "0.3em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)" }}>
+            Scroll
+          </span>
+          <motion.div
+            className="w-px h-10 bg-gradient-to-b from-white/30 to-transparent"
+            animate={{ scaleY: [0.3, 1, 0.3], opacity: [0.4, 1, 0.4] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </motion.div>
       </section>
 
-      {/* ── Hobby Grid ───────────────────────────────────────────────────── */}
-      <div className="relative bg-[#030711]">
-        <div className="max-w-5xl mx-auto px-6 md:px-12 py-16">
+      {/* ── SECTION BRIDGE: cinematic fade from video into hobbies ───────── */}
+      <div
+        style={{
+          height: 120,
+          background: "linear-gradient(to bottom, #0a0e1a 0%, #080c18 100%)",
+          marginTop: -2,
+        }}
+      />
+
+      {/* ── SECTION LABEL ────────────────────────────────────────────────── */}
+      <div style={{ background: "#080c18" }}>
+        <div className="max-w-5xl mx-auto px-6 md:px-14 pb-4">
+          <div className="flex items-center gap-4">
+            <div className="h-px flex-1" style={{ background: "linear-gradient(to right, transparent, rgba(255,255,255,0.08))" }} />
+            <span style={{
+              fontFamily: "var(--font-rubik), sans-serif",
+              fontSize: 10,
+              letterSpacing: "0.32em",
+              textTransform: "uppercase",
+              color: "rgba(255,255,255,0.22)",
+              fontWeight: 500,
+            }}>
+              Passions &amp; Pursuits
+            </span>
+            <div className="h-px flex-1" style={{ background: "linear-gradient(to left, transparent, rgba(255,255,255,0.08))" }} />
+          </div>
+        </div>
+      </div>
+
+      {/* ── HOBBY GRID ───────────────────────────────────────────────────── */}
+      <div style={{ background: "#080c18" }}>
+        <div className="max-w-5xl mx-auto px-6 md:px-14 pb-24 pt-6">
           <HobbySection hideHeader />
         </div>
       </div>
