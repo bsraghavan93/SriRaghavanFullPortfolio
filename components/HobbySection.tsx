@@ -813,7 +813,7 @@ function HobbyModal({
       onClick={onClose}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/78 backdrop-blur-xl" />
+      <div className="absolute inset-0 backdrop-blur-xl" style={{ background: "rgba(4,7,18,0.82)" }} />
 
       {/* Card */}
       <motion.div
@@ -978,7 +978,8 @@ function FeaturedCard({
     <motion.div
       variants={fadeUp}
       onClick={onClick}
-      className="relative rounded-[28px] overflow-hidden h-[360px] md:h-[460px] border border-white/8 group cursor-pointer hover:border-white/18 transition-colors duration-500"
+      className="relative rounded-[28px] overflow-hidden h-[360px] md:h-[460px] border group cursor-pointer transition-colors duration-500"
+      style={{ borderColor: "rgba(33,52,110,0.45)" }}
       whileHover={{ y: -4, transition: { duration: 0.4, ease: EASE_CINEMA } }}
     >
       <motion.div
@@ -991,14 +992,14 @@ function FeaturedCard({
         whileHover={BG_HOVER[hobby.id]}
       />
 
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/8" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#060810]/95 via-[#060810]/20 to-transparent" />
 
       {/* Cinematic hover wash */}
       <div
         className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
         style={{
           background:
-            "linear-gradient(135deg, rgba(34,211,238,0.10) 0%, transparent 45%, rgba(139,92,246,0.09) 100%)",
+            "linear-gradient(135deg, rgba(33,52,110,0.25) 0%, transparent 45%, rgba(99,102,241,0.12) 100%)",
         }}
       />
 
@@ -1068,7 +1069,8 @@ function HobbyCard({
     <motion.div
       variants={fadeUp}
       onClick={onClick}
-      className="relative rounded-[22px] overflow-hidden h-[240px] md:h-[260px] border border-white/8 group cursor-pointer hover:border-white/16 transition-colors duration-300"
+      className="relative rounded-[22px] overflow-hidden h-[240px] md:h-[260px] border group cursor-pointer transition-colors duration-300"
+      style={{ borderColor: "rgba(33,52,110,0.4)" }}
       whileHover={{ y: -5, transition: { duration: 0.3, ease: EASE_SHARP } }}
     >
       <motion.div
@@ -1081,7 +1083,7 @@ function HobbyCard({
         whileHover={BG_HOVER[hobby.id]}
       />
 
-      <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/25 to-black/5" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#060810]/92 via-[#060810]/20 to-transparent" />
 
       {/* Category-specific overlays */}
       {hobby.id === "3d-printing" && (
@@ -1189,14 +1191,15 @@ function InstagramCard() {
   return (
     <motion.div
       variants={fadeUp}
-      className="relative rounded-[22px] overflow-hidden border border-white/8 group hover:border-white/16 transition-colors duration-400"
+      className="relative rounded-[22px] overflow-hidden border group transition-colors duration-400"
+      style={{ borderColor: "rgba(33,52,110,0.45)" }}
       whileHover={{ y: -3, transition: { duration: 0.3, ease: EASE_SHARP } }}
     >
       <div
         className="absolute inset-0"
         style={{
           background:
-            "linear-gradient(145deg, #0a0012 0%, #140024 40%, #08001a 100%)",
+            "linear-gradient(145deg, #070b17 0%, #0d1428 40%, #060a14 100%)",
         }}
       />
       <div
@@ -1311,7 +1314,8 @@ export default function HobbySection({
             className="space-y-4 max-w-2xl"
           >
             <motion.div variants={fadeUp}>
-              <div className="inline-flex items-center gap-2 rounded-full border border-pink-400/25 bg-pink-400/8 px-3 py-1 text-[11px] uppercase tracking-[0.28em] text-pink-300/80">
+              <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.28em]"
+                style={{ borderColor: "rgba(99,130,220,0.25)", background: "rgba(33,52,110,0.2)", color: "rgba(150,180,255,0.75)" }}>
                 <Camera className="h-3 w-3" />
                 Beyond Work
               </div>
@@ -1321,7 +1325,8 @@ export default function HobbySection({
               className="text-4xl md:text-5xl font-bold text-white leading-tight"
             >
               Life beyond the{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-violet-400">
+              <span className="text-transparent bg-clip-text"
+                style={{ backgroundImage: "linear-gradient(to right, #6384dc, #a5b8ff)" }}>
                 terminal
               </span>
             </motion.h2>
