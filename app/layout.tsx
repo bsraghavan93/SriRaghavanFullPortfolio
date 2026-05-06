@@ -2,7 +2,8 @@ import { Geist, Geist_Mono, Rubik } from "next/font/google"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils"
+import { Analytics } from "@vercel/analytics/next"
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'})
 
@@ -26,6 +27,7 @@ export default function RootLayout({
     >
       <body>
         <ThemeProvider>{children}</ThemeProvider>
+        <Analytics />
       </body>
     </html>
   )
