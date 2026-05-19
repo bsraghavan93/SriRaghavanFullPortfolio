@@ -1040,6 +1040,11 @@ function BeyondWorkTeaser({ onInterests }: { onInterests: () => void }) {
 function InterestsPage({ onBack }: { onBack: () => void }) {
   const [videoReady, setVideoReady] = React.useState(false);
 
+  // Always start at the top regardless of scroll position on main page
+  React.useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -1117,11 +1122,11 @@ function InterestsPage({ onBack }: { onBack: () => void }) {
                 fontSize: "clamp(56px, 9vw, 100px)",
               }}
             >
-              NEW ERA
+              ENGINEER.
               <br />
-              OF DESIGN
+              CREATOR.
               <br />
-              <span style={{ color: "rgba(255,255,255,0.92)" }}>STARTS NOW</span>
+              <span style={{ color: "rgba(255,255,255,0.92)" }}>EXPLORER.</span>
             </h1>
           </motion.div>
 
@@ -1133,6 +1138,7 @@ function InterestsPage({ onBack }: { onBack: () => void }) {
             <button
               style={{ width: 184, height: 65, marginTop: 44 }}
               className="relative flex items-center justify-center transition-transform duration-200 ease-out hover:scale-105 active:scale-95"
+              onClick={() => document.getElementById("beyond-work")?.scrollIntoView({ behavior: "smooth" })}
             >
               <svg
                 className="absolute inset-0 w-full h-full"
@@ -1154,7 +1160,7 @@ function InterestsPage({ onBack }: { onBack: () => void }) {
                   zIndex: 1,
                 }}
               >
-                GET STARTED
+                EXPLORE
               </span>
             </button>
           </motion.div>
