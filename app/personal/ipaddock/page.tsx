@@ -51,13 +51,62 @@ type Weather = {
 
 type CalDay = { num: number | null; isToday: boolean };
 
+// Solid fallback background — works on old Safari without backdrop-filter
 const GLASS: React.CSSProperties = {
-  background: "rgba(255,255,255,0.07)",
+  background: "rgba(20,15,45,0.82)",
   backdropFilter: "blur(24px) saturate(1.5)",
   WebkitBackdropFilter: "blur(24px) saturate(1.5)",
   border: "1px solid rgba(255,255,255,0.13)",
   borderRadius: 22,
 };
+
+// XHR-based weather fetch — works on iOS < 10 where fetch() is unavailable
+function fetchWeatherXHR(
+  url: string,
+  onSuccess: (data: Record<string, unknown>) => void,
+  onError: () => void
+) {
+  const xhr = new XMLHttpRequest();
+  xhr.open("GET", url, true);
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState === 4) {
+      if (xhr.status === 200) {
+        try {
+          onSuccess(JSON.parse(xhr.responseText));
+        } catch {
+          onError();
+        }
+      } else {
+        onError();
+      }
+    }
+  };
+  xhr.onerror = onError;
+  try {
+    xhr.send();
+  } catch {
+    onError();
+  }
+}
+
+function parseWeather(data: Record<string, unknown>): Weather | null {
+  try {
+    const conditions = data.current_condition as Array<Record<string, unknown>>;
+    const c = conditions[0];
+    const descArr = c.weatherDesc as Array<Record<string, string>>;
+    const desc: string = descArr[0].value;
+    return {
+      icon: weatherIcon(desc),
+      temp: `${c.temp_F}°F`,
+      desc,
+      humidity: `${c.humidity}%`,
+      wind: `${c.windspeedMiles} mph`,
+      feels: `${c.FeelsLikeF}°F`,
+    };
+  } catch {
+    return null;
+  }
+}
 
 export default function IpadDockPage() {
   const router = useRouter();
@@ -80,6 +129,10 @@ export default function IpadDockPage() {
   // Fullscreen state
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // iOS detection (set once on mount, not SSR-safe to inline)
+  const [isIOS, setIsIOS] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+
   // ── Auth check ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (localStorage.getItem(AUTH_KEY) !== "true") {
@@ -89,6 +142,16 @@ export default function IpadDockPage() {
     }
   }, [router]);
 
+  // ── iOS / standalone detection ─────────────────────────────────────────────
+  useEffect(() => {
+    const ua = navigator.userAgent || "";
+    const iosDevice = /iPad|iPhone|iPod/.test(ua);
+    setIsIOS(iosDevice);
+    // standalone = launched from "Add to Home Screen"
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setIsStandalone((window.navigator as any).standalone === true);
+  }, []);
+
   // ── Load Orbitron font ─────────────────────────────────────────────────────
   useEffect(() => {
     const link = document.createElement("link");
@@ -96,7 +159,9 @@ export default function IpadDockPage() {
     link.href =
       "https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;600&display=swap";
     document.head.appendChild(link);
-    return () => { document.head.removeChild(link); };
+    return () => {
+      if (document.head.contains(link)) document.head.removeChild(link);
+    };
   }, []);
 
   // ── Clock tick ─────────────────────────────────────────────────────────────
@@ -129,65 +194,53 @@ export default function IpadDockPage() {
     setCal({ month: MONTHS[m], year: String(y), days });
   }, []);
 
-  // ── Weather fetch ──────────────────────────────────────────────────────────
+  // ── Weather fetch (XHR for old iOS < 10 compat) ───────────────────────────
   useEffect(() => {
-    fetch("https://wttr.in/Philadelphia,PA?format=j1")
-      .then((r) => r.json())
-      .then((data) => {
-        const c = data.current_condition[0];
-        const desc: string = c.weatherDesc[0].value;
-        setWeather({
-          icon: weatherIcon(desc),
-          temp: `${c.temp_F}°F`,
-          desc,
-          humidity: `${c.humidity}%`,
-          wind: `${c.windspeedMiles} mph`,
-          feels: `${c.FeelsLikeF}°F`,
-        });
-      })
-      .catch(() => setWeather((w) => ({ ...w, desc: "No connection" })));
+    const url = "https://wttr.in/Philadelphia,PA?format=j1";
 
-    // Re-fetch every 10 min
-    const id = setInterval(
-      () => {
-        fetch("https://wttr.in/Philadelphia,PA?format=j1")
-          .then((r) => r.json())
-          .then((data) => {
-            const c = data.current_condition[0];
-            const desc: string = c.weatherDesc[0].value;
-            setWeather({
-              icon: weatherIcon(desc),
-              temp: `${c.temp_F}°F`,
-              desc,
-              humidity: `${c.humidity}%`,
-              wind: `${c.windspeedMiles} mph`,
-              feels: `${c.FeelsLikeF}°F`,
-            });
-          })
-          .catch(() => {});
-      },
-      10 * 60 * 1000
-    );
+    const doFetch = () => {
+      fetchWeatherXHR(
+        url,
+        (data) => {
+          const w = parseWeather(data);
+          if (w) setWeather(w);
+        },
+        () => setWeather((prev) => ({ ...prev, desc: "No connection" }))
+      );
+    };
+
+    doFetch();
+    const id = setInterval(doFetch, 10 * 60 * 1000);
     return () => clearInterval(id);
   }, []);
 
-  // ── Fullscreen API ─────────────────────────────────────────────────────────
+  // ── Fullscreen API (desktop/Android only — not available on iOS Safari) ────
   const enterFullscreen = useCallback(() => {
     const el = document.documentElement as HTMLElement & {
-      webkitRequestFullscreen?: () => Promise<void>;
-      mozRequestFullScreen?: () => Promise<void>;
+      webkitRequestFullscreen?: () => void;
+      mozRequestFullScreen?: () => void;
     };
-    (el.requestFullscreen?.() ?? el.webkitRequestFullscreen?.() ?? el.mozRequestFullScreen?.())
-      ?.catch(() => {});
+    if (el.requestFullscreen) {
+      el.requestFullscreen();
+    } else if (el.webkitRequestFullscreen) {
+      el.webkitRequestFullscreen();
+    } else if (el.mozRequestFullScreen) {
+      el.mozRequestFullScreen();
+    }
   }, []);
 
   const exitFullscreen = useCallback(() => {
     const doc = document as Document & {
-      webkitExitFullscreen?: () => Promise<void>;
-      mozCancelFullScreen?: () => Promise<void>;
+      webkitExitFullscreen?: () => void;
+      mozCancelFullScreen?: () => void;
     };
-    (doc.exitFullscreen?.() ?? doc.webkitExitFullscreen?.() ?? doc.mozCancelFullScreen?.())
-      ?.catch(() => {});
+    if (doc.exitFullscreen) {
+      doc.exitFullscreen();
+    } else if (doc.webkitExitFullscreen) {
+      doc.webkitExitFullscreen();
+    } else if (doc.mozCancelFullScreen) {
+      doc.mozCancelFullScreen();
+    }
   }, []);
 
   useEffect(() => {
@@ -203,6 +256,10 @@ export default function IpadDockPage() {
   }, []);
 
   if (!authed) return null;
+
+  // On iOS in standalone mode → already fullscreen, hide top controls entirely
+  // On iOS in browser → show "Add to Home Screen" tip instead of fullscreen button
+  // On desktop → show normal fullscreen toggle
 
   return (
     <div
@@ -241,50 +298,64 @@ export default function IpadDockPage() {
         }}
       />
 
-      {/* ── Top controls ── */}
-      <div
-        style={{
-          position: "absolute", top: 14, left: 14, right: 14,
-          zIndex: 10, display: "flex", justifyContent: "space-between", alignItems: "center",
-        }}
-      >
-        {/* Back to hub */}
-        <button
-          onClick={() => router.push("/personal")}
+      {/* ── Top controls — hidden when iOS standalone (already fullscreen) ── */}
+      {!isStandalone && (
+        <div
           style={{
-            display: "flex", alignItems: "center", gap: 6,
-            padding: "7px 12px", borderRadius: 10,
-            background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)",
-            color: "rgba(255,255,255,0.45)", fontSize: 11, cursor: "pointer",
-            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+            position: "absolute", top: 14, left: 14, right: 14,
+            zIndex: 10, display: "flex", justifyContent: "space-between", alignItems: "center",
           }}
         >
-          <ArrowLeft size={12} />
-          Hub
-        </button>
+          {/* Back to hub */}
+          <button
+            onClick={() => router.push("/personal")}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "7px 12px", borderRadius: 10,
+              background: "rgba(30,20,60,0.85)", border: "1px solid rgba(255,255,255,0.1)",
+              color: "rgba(255,255,255,0.55)", fontSize: 11, cursor: "pointer",
+            }}
+          >
+            <ArrowLeft size={12} />
+            Hub
+          </button>
 
-        {/* Fullscreen toggle */}
-        <button
-          onClick={isFullscreen ? exitFullscreen : enterFullscreen}
-          style={{
-            display: "flex", alignItems: "center", gap: 6,
-            padding: "7px 12px", borderRadius: 10,
-            background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)",
-            color: "rgba(255,255,255,0.45)", fontSize: 11, cursor: "pointer",
-            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-          }}
-        >
-          {isFullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-          {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-        </button>
-      </div>
+          {/* iOS: show Add to Home Screen tip; desktop: show fullscreen toggle */}
+          {isIOS ? (
+            <div
+              style={{
+                padding: "7px 12px", borderRadius: 10,
+                background: "rgba(124,90,245,0.25)", border: "1px solid rgba(124,90,245,0.4)",
+                color: "rgba(255,255,255,0.65)", fontSize: 10,
+                maxWidth: 200, textAlign: "right", lineHeight: 1.4,
+              }}
+            >
+              Tip: tap <strong>Share ⬆</strong> → <strong>Add to Home Screen</strong> for fullscreen
+            </div>
+          ) : (
+            <button
+              onClick={isFullscreen ? exitFullscreen : enterFullscreen}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "7px 12px", borderRadius: 10,
+                background: "rgba(30,20,60,0.85)", border: "1px solid rgba(255,255,255,0.1)",
+                color: "rgba(255,255,255,0.55)", fontSize: 11, cursor: "pointer",
+              }}
+            >
+              {isFullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+              {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── Dashboard layout ── */}
       <div
         style={{
           position: "relative", zIndex: 1,
           width: "100%", height: "100%",
-          padding: 18, paddingTop: 52,
+          padding: 18,
+          paddingTop: isStandalone ? 18 : 52,
           display: "flex", flexDirection: "column", gap: 14,
         }}
       >
@@ -331,7 +402,13 @@ export default function IpadDockPage() {
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "1.5px", textTransform: "uppercase", marginTop: 5 }}>{weather.desc}</div>
             <div style={{ fontSize: 10, color: "rgba(255,255,255,0.28)", marginTop: 2, letterSpacing: 1 }}>Philadelphia, PA</div>
             <div style={{ display: "flex", gap: 16, marginTop: 14, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 12, width: "100%", justifyContent: "center" }}>
-              {([["Humidity", weather.humidity], ["Wind", weather.wind], ["Feels like", weather.feels]] as const).map(([lbl, val]) => (
+              {(
+                [
+                  ["Humidity", weather.humidity],
+                  ["Wind", weather.wind],
+                  ["Feels like", weather.feels],
+                ] as [string, string][]
+              ).map(([lbl, val]) => (
                 <div key={lbl} style={{ textAlign: "center" }}>
                   <div style={{ fontSize: 14, fontWeight: 600 }}>{val}</div>
                   <div style={{ fontSize: 9, color: "rgba(255,255,255,0.38)", marginTop: 2, letterSpacing: "0.5px", textTransform: "uppercase" }}>{lbl}</div>
@@ -348,14 +425,24 @@ export default function IpadDockPage() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 3, flex: 1, alignContent: "start" }}>
               {["Su","Mo","Tu","We","Th","Fr","Sa"].map((h) => (
-                <div key={h} style={{ display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "rgba(255,255,255,0.26)", paddingBottom: 4 }}>{h}</div>
+                <div
+                  key={h}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    height: 20, fontSize: 9, color: "rgba(255,255,255,0.26)", paddingBottom: 4,
+                  }}
+                >
+                  {h}
+                </div>
               ))}
               {cal.days.map((d, i) => (
                 <div
                   key={i}
                   style={{
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    aspectRatio: "1", fontSize: 12, borderRadius: 8,
+                    // explicit height instead of aspect-ratio (not supported on old iOS)
+                    height: 28,
+                    fontSize: 12, borderRadius: 8,
                     color: d.num ? (d.isToday ? "#fff" : "rgba(255,255,255,0.6)") : "transparent",
                     background: d.isToday ? "rgba(124,90,245,0.8)" : "transparent",
                     fontWeight: d.isToday ? 700 : 400,
@@ -394,7 +481,6 @@ export default function IpadDockPage() {
                 textDecoration: "none", color: "#fff",
                 padding: "7px 14px", borderRadius: 16,
                 cursor: "pointer", WebkitTapHighlightColor: "transparent",
-                transition: "transform 0.12s ease",
               }}
               onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.12) translateY(-3px)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1) translateY(0)"; }}

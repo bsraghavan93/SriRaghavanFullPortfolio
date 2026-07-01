@@ -1,0 +1,17 @@
+{
+  "name": "Sri Raghavan — Personal",
+  "short_name": "Personal",
+  "description": "Personal hub for Sri Raghavan",
+  "start_url": "/personal",
+  "display": "standalone",
+  "background_color": "#080d1f",
+  "theme_color": "#080d1f",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
