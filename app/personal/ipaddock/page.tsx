@@ -95,9 +95,9 @@ type DEntry   = { day: string; icon: string; highC: number; lowC: number; precip
 type WData    = { icon: string; desc: string; tempC: number; feelsC: number; humidity: number; windMph: number; hourly: HEntry[]; daily: DEntry[] };
 type Todo     = { id: string; text: string; done: boolean };
 
-// ── Open-Meteo URL ─────────────────────────────────────────────────────────
+// ── Open-Meteo URL (Downingtown, PA) ──────────────────────────────────────
 const WEATHER_URL =
-  "https://api.open-meteo.com/v1/forecast?latitude=39.9526&longitude=-75.1652" +
+  "https://api.open-meteo.com/v1/forecast?latitude=40.0068&longitude=-75.7035" +
   "&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m" +
   "&hourly=temperature_2m,precipitation_probability,weather_code" +
   "&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max" +
@@ -160,35 +160,8 @@ const saveTodos = (key: string, items: Todo[]) => {
   try { localStorage.setItem(key, JSON.stringify(items)); } catch {}
 };
 
-// ── CSS animations ─────────────────────────────────────────────────────────
+// ── CSS animations (no floating characters) ────────────────────────────────
 const ANIM = `
-  @keyframes cat-x {
-    0%  { transform:translateX(-100px); opacity:0; }  2% { opacity:1; }
-    22% { transform:translateX(calc(100vw + 100px)); opacity:1; }
-    23% { transform:translateX(calc(100vw + 100px)) scaleX(-1); opacity:1; }
-    43% { transform:translateX(-100px) scaleX(-1); opacity:1; }
-    44% { opacity:0; } 100% { opacity:0; transform:translateX(-100px); }
-  }
-  @keyframes cat-bob { 0%,100%{transform:translateY(0)} 25%{transform:translateY(-10px)} 75%{transform:translateY(-5px)} }
-  @keyframes ufo-x {
-    0%,14%{transform:translateX(calc(100vw+150px));opacity:0} 16%{opacity:1}
-    36%{transform:translateX(-150px);opacity:1} 37%{opacity:0} 100%{opacity:0;transform:translateX(calc(100vw+150px))}
-  }
-  @keyframes ufo-bob { 0%,100%{transform:translateY(0) rotate(0deg)} 30%{transform:translateY(-12px) rotate(-4deg)} 60%{transform:translateY(6px) rotate(3deg)} }
-  @keyframes ghost-x {
-    0%,8%{transform:translateX(88%);opacity:0} 10%{transform:translateX(88%);opacity:1}
-    14%,65%{transform:translateX(5%);opacity:1} 70%{transform:translateX(88%);opacity:1} 72%{opacity:0} 100%{opacity:0;transform:translateX(88%)}
-  }
-  @keyframes ghost-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
-  @keyframes penguin-x {
-    0%,60%,100%{transform:translateX(-80px);opacity:0} 62%{opacity:1}
-    78%{transform:translateX(calc(100vw+80px));opacity:1} 80%{opacity:0}
-  }
-  @keyframes penguin-wobble { 0%,100%{transform:rotate(-10deg) translateY(0)} 50%{transform:rotate(10deg) translateY(-6px)} }
-  @keyframes rocket-up {
-    0%,72%,100%{transform:translateY(100vh);opacity:0} 74%{opacity:1}
-    88%{transform:translateY(-120px);opacity:1} 90%{opacity:0}
-  }
   @keyframes twinkle { 0%,100%{opacity:0.2;transform:scale(1)} 50%{opacity:0.9;transform:scale(1.6)} }
   @keyframes scan-line {
     0%{transform:translateY(-100%);opacity:0} 5%{opacity:0.25} 95%{opacity:0.25} 100%{transform:translateY(200%);opacity:0}
@@ -382,7 +355,7 @@ export default function IpadDockPage() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22 }}>
               <div>
                 <div style={{ fontSize: 20, fontWeight: 700, color: T.text }}>7-Day Forecast</div>
-                <div style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>Philadelphia, PA</div>
+                <div style={{ fontSize: 13, color: T.muted, marginTop: 2 }}>Downingtown, PA</div>
               </div>
               <button onClick={() => setShowWeekly(false)} style={{ ...iconBtn({ width: 36, height: 36, borderRadius: 10 }) }}>
                 <X size={16} color={T.iconColor} />
@@ -437,23 +410,6 @@ export default function IpadDockPage() {
       {dark && [[8,12],[15,88],[22,35],[35,7],[42,65],[55,22],[62,80],[70,45],[78,15],[85,72],[92,38],[5,55],[48,92],[88,5]].map(([l,t],i) => (
         <div key={i} style={{ position:"fixed", left:`${l}%`, top:`${t}%`, width: i%3===0?3:2, height: i%3===0?3:2, borderRadius:"50%", background:"#fff", opacity:0.3, pointerEvents:"none", zIndex:0, animation:`twinkle ${2.5+i*0.4}s ease-in-out infinite ${i*0.3}s` }} />
       ))}
-
-      {/* ── Animated characters ── */}
-      <div style={{ position:"fixed", bottom:118, left:0, zIndex:50, pointerEvents:"none", animation:"cat-x 70s linear infinite", transformOrigin:"center" }}>
-        <div style={{ fontSize:"clamp(36px,4vw,56px)", lineHeight:1, animation:"cat-bob 0.45s ease-in-out infinite" }}>🐱</div>
-      </div>
-      <div style={{ position:"fixed", top:80, right:0, zIndex:50, pointerEvents:"none", animation:"ufo-x 85s linear infinite -18s" }}>
-        <div style={{ fontSize:"clamp(40px,5vw,64px)", lineHeight:1, animation:"ufo-bob 3s ease-in-out infinite" }}>🛸</div>
-      </div>
-      <div style={{ position:"fixed", right:0, top:"42%", zIndex:50, pointerEvents:"none", overflow:"hidden", animation:"ghost-x 65s ease-in-out infinite -10s" }}>
-        <div style={{ fontSize:"clamp(48px,6vw,80px)", lineHeight:1, animation:"ghost-float 2.8s ease-in-out infinite" }}>👻</div>
-      </div>
-      <div style={{ position:"fixed", bottom:122, left:0, zIndex:49, pointerEvents:"none", animation:"penguin-x 55s linear infinite -35s" }}>
-        <div style={{ fontSize:"clamp(28px,3.2vw,44px)", lineHeight:1, animation:"penguin-wobble 0.55s ease-in-out infinite" }}>🐧</div>
-      </div>
-      <div style={{ position:"fixed", left:"47%", bottom:0, zIndex:50, pointerEvents:"none", animation:"rocket-up 90s ease-in infinite -60s" }}>
-        <div style={{ fontSize:"clamp(36px,4.5vw,60px)", lineHeight:1 }}>🚀</div>
-      </div>
 
       {/* ══════════════════════════════════════════════════════
           PAGE SHELL — left 70% + right 30% todo sidebar
@@ -575,41 +531,55 @@ export default function IpadDockPage() {
             {/* Weather card — click for weekly popup */}
             <div
               onClick={() => weather && setShowWeekly(true)}
-              style={{ ...card, padding:"clamp(12px,1.8vh,22px) clamp(12px,1.8vw,20px)", display:"flex", flexDirection:"column", cursor: weather ? "pointer" : "default", overflow:"hidden" }}
+              style={{ ...card, padding:"clamp(12px,1.6vh,18px) clamp(12px,1.6vw,18px)", display:"flex", flexDirection:"column", cursor: weather ? "pointer" : "default", overflow:"hidden" }}
             >
-              {/* Current */}
-              <div style={{ display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
-                <div style={{ fontSize:"clamp(40px,5.5vw,72px)", lineHeight:1 }}>{weather?.icon ?? "🌤"}</div>
-                <div>
-                  <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
-                    <span style={{ fontSize:"clamp(34px,4.5vw,62px)", fontWeight:700, lineHeight:1, color:T.text }}>{weather?.tempC ?? "--"}°C</span>
-                    <span style={{ fontSize:"clamp(14px,1.8vw,22px)", color:T.muted, fontWeight:500 }}>{weather ? cToF(weather.tempC) : "--"}°F</span>
+              {/* Top: icon + big temp */}
+              <div style={{ display:"flex", alignItems:"center", gap:14, flexShrink:0 }}>
+                <div style={{ fontSize:"clamp(42px,5.5vw,68px)", lineHeight:1, flexShrink:0 }}>{weather?.icon ?? "🌤"}</div>
+                <div style={{ minWidth:0 }}>
+                  <div style={{ display:"flex", alignItems:"baseline", gap:10, flexWrap:"wrap" }}>
+                    <span style={{ fontSize:"clamp(36px,4.8vw,64px)", fontWeight:700, lineHeight:1, color:T.text }}>{weather?.tempC ?? "--"}°C</span>
+                    <span style={{ fontSize:"clamp(18px,2.2vw,26px)", color:T.muted, fontWeight:500 }}>{weather ? cToF(weather.tempC) : "--"}°F</span>
                   </div>
-                  <div style={{ fontSize:"clamp(9px,1vw,13px)", color:T.muted, textTransform:"uppercase", letterSpacing:"1.2px", marginTop:3 }}>{weather?.desc ?? "Loading…"}</div>
-                  <div style={{ fontSize:"clamp(8px,0.85vw,11px)", color:T.muted, opacity:0.65, marginTop:1 }}>Philadelphia · feels {weather?.feelsC ?? "--"}°C · {weather?.windMph ?? "--"} mph · {weather?.humidity ?? "--"}% hum.</div>
+                  {/* Condition — now clearly readable */}
+                  <div style={{ fontSize:"clamp(14px,1.6vw,20px)", fontWeight:600, color:T.sub, marginTop:4 }}>
+                    {weather?.desc ?? "Loading…"}
+                  </div>
+                  <div style={{ fontSize:"clamp(11px,1.2vw,14px)", color:T.muted, marginTop:2 }}>
+                    Downingtown, PA
+                  </div>
                 </div>
+              </div>
+
+              {/* Metadata row — labeled, readable */}
+              <div style={{ display:"flex", gap:"clamp(14px,2vw,24px)", marginTop:"clamp(8px,1.2vh,12px)", flexShrink:0 }}>
+                {([["Feels like", `${weather?.feelsC ?? "--"}°C`], ["Wind", `${weather?.windMph ?? "--"} mph`], ["Humidity", `${weather?.humidity ?? "--"}%`]] as [string,string][]).map(([lbl, val]) => (
+                  <div key={lbl}>
+                    <div style={{ fontSize:"clamp(14px,1.6vw,20px)", fontWeight:700, color:T.text }}>{val}</div>
+                    <div style={{ fontSize:"clamp(10px,1.1vw,13px)", color:T.muted, textTransform:"uppercase", letterSpacing:"0.6px", marginTop:1 }}>{lbl}</div>
+                  </div>
+                ))}
               </div>
 
               {/* Tap hint */}
               {weather && (
-                <div style={{ fontSize:"clamp(8px,0.8vw,11px)", color:T.muted, opacity:0.5, marginTop:4, letterSpacing:"0.5px" }}>
+                <div style={{ fontSize:"clamp(10px,1.1vw,13px)", color:T.muted, opacity:0.55, marginTop:"clamp(4px,0.7vh,8px)", letterSpacing:"0.5px" }}>
                   TAP FOR WEEKLY FORECAST ▸
                 </div>
               )}
 
-              {/* Hourly strip */}
-              <div style={{ flex:1, display:"flex", overflowX:"auto", gap:"clamp(6px,0.8vw,12px)", marginTop:"clamp(8px,1.2vh,14px)", paddingBottom:4, alignItems:"flex-end" }}>
+              {/* Hourly strip — bigger items */}
+              <div style={{ flex:1, display:"flex", overflowX:"auto", gap:"clamp(8px,1.1vw,16px)", marginTop:"clamp(8px,1.2vh,12px)", paddingBottom:4, alignItems:"flex-start" }}>
                 {(weather?.hourly ?? []).map((h, i) => (
-                  <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3, flexShrink:0, minWidth:"clamp(36px,4.5vw,56px)" }}>
-                    <div style={{ fontSize:"clamp(7px,0.75vw,10px)", color:T.muted, whiteSpace:"nowrap" }}>{h.label}</div>
-                    <div style={{ fontSize:"clamp(16px,2.2vw,28px)", lineHeight:1 }}>{h.icon}</div>
-                    <div style={{ fontSize:"clamp(10px,1.1vw,15px)", fontWeight:600, color:T.text }}>{h.tempC}°</div>
-                    {/* Rain probability bar */}
+                  <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3, flexShrink:0, minWidth:"clamp(44px,5.5vw,64px)" }}>
+                    <div style={{ fontSize:"clamp(11px,1.3vw,15px)", color:T.muted, whiteSpace:"nowrap", fontWeight:500 }}>{h.label}</div>
+                    <div style={{ fontSize:"clamp(24px,3.2vw,40px)", lineHeight:1 }}>{h.icon}</div>
+                    <div style={{ fontSize:"clamp(13px,1.5vw,18px)", fontWeight:700, color:T.text }}>{h.tempC}°</div>
                     <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
-                      <div style={{ width:"clamp(22px,2.8vw,36px)", height:3, borderRadius:2, background:"rgba(96,165,250,0.15)", overflow:"hidden" }}>
+                      <div style={{ width:"clamp(28px,3.2vw,40px)", height:4, borderRadius:2, background:"rgba(96,165,250,0.15)", overflow:"hidden" }}>
                         <div style={{ width:`${h.precip}%`, height:"100%", background:"#60a5fa", borderRadius:2 }} />
                       </div>
-                      {h.precip > 10 && <div style={{ fontSize:"clamp(7px,0.7vw,9px)", color:"#60a5fa" }}>{h.precip}%</div>}
+                      {h.precip > 5 && <div style={{ fontSize:"clamp(10px,1.1vw,13px)", color:"#60a5fa", fontWeight:600 }}>{h.precip}%</div>}
                     </div>
                   </div>
                 ))}
@@ -693,7 +663,7 @@ export default function IpadDockPage() {
                       >
                         {todo.done && <span style={{ color:"#fff", fontSize:11, lineHeight:1 }}>✓</span>}
                       </button>
-                      <span style={{ flex:1, fontSize:"clamp(11px,1.15vw,15px)", color: todo.done ? T.todoDoneTxt : T.text, textDecoration: todo.done ? "line-through" : "none", lineHeight:1.4 }}>
+                      <span style={{ flex:1, fontSize:"clamp(14px,1.5vw,18px)", color: todo.done ? T.todoDoneTxt : T.text, textDecoration: todo.done ? "line-through" : "none", lineHeight:1.4 }}>
                         {todo.text}
                       </span>
                       <button onClick={() => deleteTodo(sec, todo.id)} style={{ flexShrink:0, background:"none", border:"none", cursor:"pointer", color:T.muted, opacity:0.5, padding:"0 2px", touchAction:"manipulation" }}>
