@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Volume2, VolumeX, WifiOff, X, Plus, Trash2 } from "lucide-react";
+import { useNotes } from "@/hooks/useNotes";
 
 // ── Local mute-server helpers ──────────────────────────────────────────────
 const MUTE_TOKEN = process.env.NEXT_PUBLIC_MUTE_API_TOKEN ?? "";
@@ -28,9 +29,7 @@ async function muteApiFetch(path: string, method = "GET"): Promise<boolean | nul
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
-const AUTH_KEY      = "personal_authed";
-const TODO_KEY_TS   = "td_trustage";
-const TODO_KEY_UCLA = "td_ucla";
+const AUTH_KEY = "personal_authed";
 
 const DAYS       = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const DAYS_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -105,7 +104,6 @@ type CalDay   = { num: number | null; isToday: boolean };
 type HEntry   = { label: string; icon: string; tempC: number; precip: number };
 type DEntry   = { day: string; icon: string; highC: number; lowC: number; precip: number };
 type WData    = { icon: string; desc: string; tempC: number; feelsC: number; humidity: number; windMph: number; hourly: HEntry[]; daily: DEntry[] };
-type Todo     = { id: string; text: string; done: boolean };
 
 // ── Open-Meteo URL (Downingtown, PA) ──────────────────────────────────────
 const WEATHER_URL =
@@ -164,13 +162,6 @@ function parseWeather(raw: unknown): WData {
   };
 }
 
-// ── Todo helpers ───────────────────────────────────────────────────────────
-const loadTodos = (key: string): Todo[] => {
-  try { return JSON.parse(localStorage.getItem(key) || "[]"); } catch { return []; }
-};
-const saveTodos = (key: string, items: Todo[]) => {
-  try { localStorage.setItem(key, JSON.stringify(items)); } catch {}
-};
 
 // ── CSS animations ─────────────────────────────────────────────────────────
 const ANIM = `
@@ -212,6 +203,10 @@ const iconBtn = (extra?: React.CSSProperties): React.CSSProperties => ({
   ...extra,
 });
 
+// ── Dock section IDs resolved at runtime ──────────────────────────────────
+// We look up TruStage/UCLA sections from Supabase by title.
+// Items in the dock are ALL checklist_items from all notes in that section.
+
 // ══════════════════════════════════════════════════════════════════════════════
 export default function IpadDockPage() {
   const router = useRouter();
@@ -220,15 +215,54 @@ export default function IpadDockPage() {
   const [muteOffline, setMuteOffline] = useState(false);
   const [showToast,   setShowToast]   = useState(false);
   const [showWeekly, setShowWeekly] = useState(false);
-  const [todoPopup,  setTodoPopup]  = useState<"trustage" | "ucla" | null>(null);
+  const [todoPopup,  setTodoPopup]  = useState<string | null>(null);
 
   const [zoneTimes, setZoneTimes] = useState<ZoneTime[]>(ZONES.map(() => ({ hhmm: "0:00", ss: "00", ampm: "AM" })));
   const [dateInfo,  setDateInfo]  = useState({ day: "", date: "" });
   const [cal,       setCal]       = useState<{ month: string; year: string; days: CalDay[] }>({ month: "", year: "", days: [] });
   const [weather,   setWeather]   = useState<WData | null>(null);
-  const [todos,     setTodos]     = useState<{ trustage: Todo[]; ucla: Todo[] }>({ trustage: [], ucla: [] });
-  const [inputTS,   setInputTS]   = useState("");
-  const [inputUCLA, setInputUCLA] = useState("");
+  const [inputMap,  setInputMap]  = useState<Record<string, string>>({});
+
+  const { sections, notes, addItem, updateItem, deleteItem, getOrCreateDefaultNote } = useNotes();
+
+  // Dock sections: show pinned sections first, then by position. Default to TruStage+UCLA.
+  const dockSections = sections
+    .filter((s) => !s.archived)
+    .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || a.position - b.position)
+    .slice(0, 4); // Show up to 4 sections in dock sidebar
+
+  const getSectionItems = useCallback(
+    (sectionId: string) =>
+      notes
+        .filter((n) => n.section_id === sectionId && !n.archived)
+        .flatMap((n) => (n.checklist_items ?? []))
+        .sort((a, b) => a.position - b.position),
+    [notes]
+  );
+
+  const addTodo = useCallback(
+    async (sectionId: string, text: string) => {
+      if (!text.trim()) return;
+      const note = await getOrCreateDefaultNote(sectionId);
+      await addItem(note.id, text.trim());
+      setInputMap((p) => ({ ...p, [sectionId]: "" }));
+    },
+    [getOrCreateDefaultNote, addItem]
+  );
+
+  const toggleTodo = useCallback(
+    async (itemId: string, noteId: string, done: boolean) => {
+      await updateItem(itemId, noteId, { completed: done });
+    },
+    [updateItem]
+  );
+
+  const deleteTodo = useCallback(
+    async (itemId: string, noteId: string) => {
+      await deleteItem(itemId, noteId);
+    },
+    [deleteItem]
+  );
 
   // Auth
   useEffect(() => {
@@ -295,11 +329,6 @@ export default function IpadDockPage() {
     return () => clearInterval(id);
   }, []);
 
-  // Todos
-  useEffect(() => {
-    setTodos({ trustage: loadTodos(TODO_KEY_TS), ucla: loadTodos(TODO_KEY_UCLA) });
-  }, []);
-
   // Handlers
   const handleMute = async () => {
     const newState = await muteApiFetch("/run/mute", "POST");
@@ -311,33 +340,6 @@ export default function IpadDockPage() {
     }
     setShowToast(true);
     setTimeout(() => setShowToast(false), 2500);
-  };
-
-  const addTodo = (sec: "trustage" | "ucla", text: string) => {
-    if (!text.trim()) return;
-    const item: Todo = { id: Date.now().toString(), text: text.trim(), done: false };
-    setTodos(p => {
-      const n = { ...p, [sec]: [...p[sec], item] };
-      saveTodos(sec === "trustage" ? TODO_KEY_TS : TODO_KEY_UCLA, n[sec]);
-      return n;
-    });
-    sec === "trustage" ? setInputTS("") : setInputUCLA("");
-  };
-
-  const toggleTodo = (sec: "trustage" | "ucla", id: string) => {
-    setTodos(p => {
-      const n = { ...p, [sec]: p[sec].map(t => t.id === id ? { ...t, done: !t.done } : t) };
-      saveTodos(sec === "trustage" ? TODO_KEY_TS : TODO_KEY_UCLA, n[sec]);
-      return n;
-    });
-  };
-
-  const deleteTodo = (sec: "trustage" | "ucla", id: string) => {
-    setTodos(p => {
-      const n = { ...p, [sec]: p[sec].filter(t => t.id !== id) };
-      saveTodos(sec === "trustage" ? TODO_KEY_TS : TODO_KEY_UCLA, n[sec]);
-      return n;
-    });
   };
 
   if (!authed) return null;
@@ -388,14 +390,15 @@ export default function IpadDockPage() {
         </div>
       )}
 
-      {/* ── Todo popup ────────────────────────────────────────────────────── */}
+      {/* ── Todo popup (Supabase-backed) ────────────────────────────────── */}
       {todoPopup && (() => {
-        const sec   = todoPopup;
-        const color = sec === "trustage" ? "#60a5fa" : "#a78bfa";
-        const label = sec === "trustage" ? "TruStage" : "UCLA";
-        const emoji = sec === "trustage" ? "🏢" : "🎓";
-        const inputVal = sec === "trustage" ? inputTS : inputUCLA;
-        const setInput = sec === "trustage" ? setInputTS : setInputUCLA;
+        const section = dockSections.find(s => s.id === todoPopup);
+        if (!section) return null;
+        const items = getSectionItems(section.id);
+        const inputVal = inputMap[section.id] ?? "";
+        const setInput = (v: string) => setInputMap(p => ({ ...p, [section.id]: v }));
+        const color = section.color;
+        const emoji = section.icon === "GraduationCap" ? "🎓" : section.icon === "Building" ? "🏢" : "📋";
         return (
           <div
             style={{ position:"fixed", inset:0, zIndex:500, background:"rgba(0,0,0,0.78)", display:"flex", alignItems:"center", justifyContent:"center" }}
@@ -409,10 +412,10 @@ export default function IpadDockPage() {
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                   <span style={{ fontSize:26 }}>{emoji}</span>
-                  <span style={{ fontSize:22, fontWeight:700, color }}>{label}</span>
+                  <span style={{ fontSize:22, fontWeight:700, color }}>{section.title}</span>
                 </div>
                 <div style={{ display:"flex", gap:10, alignItems:"center" }}>
-                  <span style={{ fontSize:14, color:T.muted }}>{todos[sec].filter(t=>!t.done).length} remaining</span>
+                  <span style={{ fontSize:14, color:T.muted }}>{items.filter(t=>!t.completed).length} remaining</span>
                   <button onClick={() => setTodoPopup(null)} style={{ ...iconBtn({ width:38, height:38, borderRadius:11 }) }}>
                     <X size={17} color={T.iconColor} />
                   </button>
@@ -421,27 +424,30 @@ export default function IpadDockPage() {
 
               {/* List */}
               <div style={{ flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:2 }}>
-                {todos[sec].length === 0 && (
+                {items.length === 0 && (
                   <div style={{ fontSize:16, color:T.muted, textAlign:"center", marginTop:36, opacity:0.6 }}>
                     No tasks yet — add one below
                   </div>
                 )}
-                {todos[sec].map(todo => (
-                  <div key={todo.id} style={{ display:"flex", alignItems:"center", gap:14, padding:"13px 6px", borderBottom:`1px solid ${T.divider}` }}>
-                    <button
-                      onClick={() => toggleTodo(sec, todo.id)}
-                      style={{ flexShrink:0, width:30, height:30, borderRadius:9, border:`2px solid ${todo.done ? color : T.border}`, background: todo.done ? color : "transparent", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", touchAction:"manipulation" }}
-                    >
-                      {todo.done && <span style={{ color:"#fff", fontSize:16, fontWeight:800, lineHeight:1 }}>✓</span>}
-                    </button>
-                    <span style={{ flex:1, fontSize:20, fontWeight:500, color: todo.done ? T.todoDoneTxt : T.text, textDecoration: todo.done ? "line-through" : "none", lineHeight:1.4 }}>
-                      {todo.text}
-                    </span>
-                    <button onClick={() => deleteTodo(sec, todo.id)} style={{ flexShrink:0, background:"none", border:"none", cursor:"pointer", color:T.muted, opacity:0.5, padding:"0 4px", touchAction:"manipulation" }}>
-                      <Trash2 size={17} />
-                    </button>
-                  </div>
-                ))}
+                {items.map(item => {
+                  const noteId = item.note_id;
+                  return (
+                    <div key={item.id} style={{ display:"flex", alignItems:"center", gap:14, padding:"13px 6px", borderBottom:`1px solid ${T.divider}` }}>
+                      <button
+                        onClick={() => toggleTodo(item.id, noteId, !item.completed)}
+                        style={{ flexShrink:0, width:30, height:30, borderRadius:9, border:`2px solid ${item.completed ? color : T.border}`, background: item.completed ? color : "transparent", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", touchAction:"manipulation" }}
+                      >
+                        {item.completed && <span style={{ color:"#fff", fontSize:16, fontWeight:800, lineHeight:1 }}>✓</span>}
+                      </button>
+                      <span style={{ flex:1, fontSize:20, fontWeight:500, color: item.completed ? T.todoDoneTxt : T.text, textDecoration: item.completed ? "line-through" : "none", lineHeight:1.4 }}>
+                        {item.text}
+                      </span>
+                      <button onClick={() => deleteTodo(item.id, noteId)} style={{ flexShrink:0, background:"none", border:"none", cursor:"pointer", color:T.muted, opacity:0.5, padding:"0 4px", touchAction:"manipulation" }}>
+                        <Trash2 size={17} />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Add input */}
@@ -449,12 +455,12 @@ export default function IpadDockPage() {
                 <input
                   value={inputVal}
                   onChange={e => setInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter") addTodo(sec, inputVal); }}
+                  onKeyDown={e => { if (e.key === "Enter") addTodo(section.id, inputVal); }}
                   placeholder="Add new task…"
                   style={{ flex:1, background:T.inputBg, border:`1px solid ${T.border}`, borderRadius:12, padding:"13px 16px", color:T.text, fontSize:17, outline:"none", caretColor:color }}
                 />
                 <button
-                  onClick={() => addTodo(sec, inputVal)}
+                  onClick={() => addTodo(section.id, inputVal)}
                   style={{ flexShrink:0, width:48, height:48, borderRadius:13, background:color, border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", touchAction:"manipulation" }}
                 >
                   <Plus size={22} color="#fff" />
@@ -621,41 +627,49 @@ export default function IpadDockPage() {
 
           {/* RIGHT TODO SIDEBAR ~30% — tap card to open popup */}
           <div style={{ flex:"0 0 30%", display:"flex", flexDirection:"column", gap:10, minWidth:0, minHeight:0, overflow:"hidden" }}>
-            {(["trustage","ucla"] as const).map(sec => {
-              const color = sec === "trustage" ? "#60a5fa" : "#a78bfa";
-              const label = sec === "trustage" ? "TruStage" : "UCLA";
-              const emoji = sec === "trustage" ? "🏢" : "🎓";
+            {dockSections.length === 0 ? (
+              <div style={{ ...card, flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, padding:16 }}>
+                <span style={{ fontSize:28 }}>📝</span>
+                <p style={{ fontSize:12, color:T.muted, textAlign:"center", lineHeight:1.5 }}>
+                  Create sections in Quick Notes to see them here
+                </p>
+                <a href="/personal/notes" style={{ fontSize:11, color:"#7c5af5", textDecoration:"none" }}>Open Quick Notes →</a>
+              </div>
+            ) : dockSections.map(section => {
+              const items = getSectionItems(section.id);
+              const color = section.color;
+              const emoji = section.icon === "GraduationCap" ? "🎓" : section.icon === "Building" ? "🏢" : section.icon === "Star" ? "⭐" : "📋";
               return (
                 <div
-                  key={sec}
-                  onClick={() => setTodoPopup(sec)}
+                  key={section.id}
+                  onClick={() => setTodoPopup(section.id)}
                   style={{ ...card, flex:1, display:"flex", flexDirection:"column", overflow:"hidden", minHeight:0, cursor:"pointer" }}
                 >
                   {/* Section header */}
                   <div style={{ padding:"14px 16px 10px", borderBottom:`1px solid ${T.divider}`, flexShrink:0, display:"flex", alignItems:"center", gap:8 }}>
                     <span style={{ fontSize:18 }}>{emoji}</span>
-                    <span style={{ fontSize:"clamp(13px,1.4vw,18px)", fontWeight:700, color, letterSpacing:"0.5px" }}>{label}</span>
-                    <span style={{ marginLeft:"auto", fontSize:"clamp(10px,1vw,13px)", color:T.muted }}>{todos[sec].filter(t=>!t.done).length} left</span>
+                    <span style={{ fontSize:"clamp(13px,1.4vw,18px)", fontWeight:700, color, letterSpacing:"0.5px" }}>{section.title}</span>
+                    <span style={{ marginLeft:"auto", fontSize:"clamp(10px,1vw,13px)", color:T.muted }}>{items.filter(t=>!t.completed).length} left</span>
                     <span style={{ fontSize:12, color:T.muted, opacity:0.45 }}>▶</span>
                   </div>
 
-                  {/* Preview list — not interactive, tap card to expand */}
+                  {/* Preview list */}
                   <div style={{ flex:1, padding:"8px 14px 10px", display:"flex", flexDirection:"column", gap:6, overflow:"hidden" }}>
-                    {todos[sec].length === 0 && (
+                    {items.length === 0 && (
                       <div style={{ fontSize:"clamp(11px,1.1vw,14px)", color:T.muted, textAlign:"center", marginTop:18, opacity:0.5 }}>Tap to add tasks</div>
                     )}
-                    {todos[sec].slice(0, 7).map(todo => (
-                      <div key={todo.id} style={{ display:"flex", alignItems:"center", gap:8 }}>
-                        <div style={{ flexShrink:0, width:14, height:14, borderRadius:4, border:`1.5px solid ${todo.done ? color : T.border}`, background: todo.done ? color : "transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                          {todo.done && <span style={{ color:"#fff", fontSize:9, lineHeight:1 }}>✓</span>}
+                    {items.slice(0, 7).map(item => (
+                      <div key={item.id} style={{ display:"flex", alignItems:"center", gap:8 }}>
+                        <div style={{ flexShrink:0, width:14, height:14, borderRadius:4, border:`1.5px solid ${item.completed ? color : T.border}`, background: item.completed ? color : "transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                          {item.completed && <span style={{ color:"#fff", fontSize:9, lineHeight:1 }}>✓</span>}
                         </div>
-                        <span style={{ fontSize:"clamp(13px,1.4vw,17px)", color: todo.done ? T.todoDoneTxt : T.text, textDecoration: todo.done ? "line-through" : "none", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                          {todo.text}
+                        <span style={{ fontSize:"clamp(13px,1.4vw,17px)", color: item.completed ? T.todoDoneTxt : T.text, textDecoration: item.completed ? "line-through" : "none", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                          {item.text}
                         </span>
                       </div>
                     ))}
-                    {todos[sec].length > 7 && (
-                      <div style={{ fontSize:"clamp(10px,1vw,12px)", color:T.muted, opacity:0.4, marginTop:2 }}>+{todos[sec].length - 7} more…</div>
+                    {items.length > 7 && (
+                      <div style={{ fontSize:"clamp(10px,1vw,12px)", color:T.muted, opacity:0.4, marginTop:2 }}>+{items.length - 7} more…</div>
                     )}
                   </div>
                 </div>
