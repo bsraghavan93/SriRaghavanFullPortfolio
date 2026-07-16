@@ -21,12 +21,12 @@ const APPS = [
   {
     id: "notes",
     label: "Quick Notes",
-    description: "Coming soon",
+    description: "Checklists, tags & priorities",
     emoji: "📝",
-    accent: "rgba(255,255,255,0.03)",
-    border: "rgba(255,255,255,0.06)",
-    href: "#",
-    available: false,
+    accent: "rgba(124,90,245,0.2)",
+    border: "rgba(124,90,245,0.35)",
+    href: "/personal/notes",
+    available: true,
   },
   {
     id: "links",
