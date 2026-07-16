@@ -1,21 +1,16 @@
 "use client";
 
-import React, { useState, useMemo, useCallback, useRef } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
   Search,
-  Pin,
-  Archive,
-  Trash2,
   X,
   MoreHorizontal,
-  Inbox,
-  Clock,
-  SlidersHorizontal,
-  Edit3,
-  ChevronLeft,
   Check,
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { useNotes } from "@/hooks/useNotes";
 import { NoteEditor } from "./NoteEditor";
@@ -440,10 +435,24 @@ export function QuickNotes() {
   const [activeView, setActiveView] = useState<ViewFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"updated" | "created" | "title">("updated");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [sectionModal, setSectionModal] = useState<{ open: boolean; section?: NoteSection }>({ open: false });
   const [sectionMenuId, setSectionMenuId] = useState<string | null>(null);
+
+  // Detect mobile and auto-close sidebar on small screens
+  useEffect(() => {
+    const check = () => {
+      const mobile = window.innerWidth < 640;
+      setIsMobile(mobile);
+      if (mobile) setSidebarOpen(false);
+      else setSidebarOpen(true);
+    };
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   const activeSections = sections.filter((s) => !s.archived);
   const archivedSections = sections.filter((s) => s.archived);
@@ -563,36 +572,51 @@ export function QuickNotes() {
   ];
 
   return (
-    <div style={{ display: "flex", height: "100%", fontFamily: "var(--font-sans), -apple-system, sans-serif", color: T.text, position: "relative" }}>
-      {/* Mobile sidebar overlay */}
+    <div style={{ display: "flex", height: "100%", fontFamily: "var(--font-sans), -apple-system, sans-serif", color: T.text, position: "relative", overflow: "hidden" }}>
+
+      {/* ── Mobile backdrop ── */}
       <AnimatePresence>
-        {sidebarOpen && (
+        {isMobile && sidebarOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
             onClick={() => setSidebarOpen(false)}
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 300, display: "none" }}
-            className="mobile-overlay"
+            style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 40 }}
           />
         )}
       </AnimatePresence>
 
       {/* ── Sidebar ── */}
       <motion.div
+        initial={false}
+        animate={
+          isMobile
+            ? { x: sidebarOpen ? 0 : -280 }
+            : { width: sidebarOpen ? 220 : 0 }
+        }
+        transition={{ type: "spring", stiffness: 320, damping: 32 }}
         style={{
-          width: 220,
-          minWidth: 220,
+          ...(isMobile
+            ? { position: "absolute", top: 0, left: 0, height: "100%", width: 260, zIndex: 50 }
+            : { position: "relative", overflow: "hidden", flexShrink: 0 }),
           background: T.sidebar,
           borderRight: `1px solid ${T.divider}`,
           display: "flex",
           flexDirection: "column",
-          overflow: "hidden",
-          flexShrink: 0,
         }}
       >
-        <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.divider}` }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: T.text, letterSpacing: "-0.3px" }}>📝 Quick Notes</h2>
+        <div style={{ padding: "14px 14px 12px", borderBottom: `1px solid ${T.divider}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexShrink: 0 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: T.text, letterSpacing: "-0.3px", whiteSpace: "nowrap", overflow: "hidden" }}>📝 Quick Notes</h2>
+          {isMobile && (
+            <button
+              onClick={() => setSidebarOpen(false)}
+              style={{ flexShrink: 0, width: 30, height: 30, borderRadius: 9, background: "rgba(255,255,255,0.06)", border: "none", color: T.muted, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
 
         <div style={{ flex: 1, overflowY: "auto", padding: "10px 8px" }}>
@@ -601,7 +625,7 @@ export function QuickNotes() {
             {SMART_VIEWS.map((view) => (
               <button
                 key={view.id}
-                onClick={() => setActiveView(view.id)}
+                onClick={() => { setActiveView(view.id); if (isMobile) setSidebarOpen(false); }}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -648,7 +672,7 @@ export function QuickNotes() {
           {activeSections.map((section) => (
             <div key={section.id} style={{ position: "relative" }}>
               <button
-                onClick={() => setActiveView(section.id)}
+                onClick={() => { setActiveView(section.id); if (isMobile) setSidebarOpen(false); }}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -765,15 +789,39 @@ export function QuickNotes() {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 10,
-            padding: "14px 20px",
+            gap: 8,
+            padding: "10px 14px",
             borderBottom: `1px solid ${T.divider}`,
             flexShrink: 0,
           }}
         >
+          {/* Sidebar toggle */}
+          <button
+            onClick={() => setSidebarOpen((v) => !v)}
+            title={sidebarOpen ? "Collapse sidebar" : "Open sidebar"}
+            style={{
+              flexShrink: 0,
+              width: 34,
+              height: 34,
+              borderRadius: 10,
+              background: "rgba(255,255,255,0.05)",
+              border: `1px solid ${T.border}`,
+              color: T.muted,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "all 0.15s",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "#fff"; e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = T.muted; e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+          >
+            {sidebarOpen && !isMobile ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />}
+          </button>
+
           {/* Section title */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {activeSectionForView
                 ? `${SECTION_ICONS[activeSectionForView.icon] ?? "📄"} ${activeSectionForView.title}`
                 : SMART_VIEWS.find((v) => v.id === activeView)?.label ?? "Notes"}
@@ -782,7 +830,7 @@ export function QuickNotes() {
 
           {/* Search */}
           <div style={{ position: "relative", flexShrink: 0 }}>
-            <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: T.muted }} />
+            <Search size={13} style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: T.muted }} />
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -791,44 +839,47 @@ export function QuickNotes() {
                 background: T.inputBg,
                 border: `1px solid ${T.border}`,
                 borderRadius: 10,
-                padding: "7px 12px 7px 30px",
+                padding: "7px 10px 7px 28px",
                 color: T.text,
                 fontSize: 13,
                 outline: "none",
                 caretColor: "#7c5af5",
-                width: 180,
+                width: isMobile ? 110 : 160,
+                transition: "width 0.2s",
               }}
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: T.muted, cursor: "pointer", lineHeight: 0 }}
+                style={{ position: "absolute", right: 7, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: T.muted, cursor: "pointer", lineHeight: 0 }}
               >
-                <X size={12} />
+                <X size={11} />
               </button>
             )}
           </div>
 
-          {/* Sort */}
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-            style={{
-              background: T.inputBg,
-              border: `1px solid ${T.border}`,
-              borderRadius: 10,
-              padding: "7px 10px",
-              color: T.muted,
-              fontSize: 13,
-              cursor: "pointer",
-              outline: "none",
-              flexShrink: 0,
-            }}
-          >
-            <option value="updated">Recent</option>
-            <option value="created">Created</option>
-            <option value="title">A–Z</option>
-          </select>
+          {/* Sort — hide label on mobile */}
+          {!isMobile && (
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              style={{
+                background: T.inputBg,
+                border: `1px solid ${T.border}`,
+                borderRadius: 10,
+                padding: "7px 10px",
+                color: T.muted,
+                fontSize: 13,
+                cursor: "pointer",
+                outline: "none",
+                flexShrink: 0,
+              }}
+            >
+              <option value="updated">Recent</option>
+              <option value="created">Created</option>
+              <option value="title">A–Z</option>
+            </select>
+          )}
 
           {/* Add note */}
           <button
@@ -837,11 +888,11 @@ export function QuickNotes() {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 6,
+              gap: 5,
               background: "#7c5af5",
               border: "none",
               borderRadius: 10,
-              padding: "8px 14px",
+              padding: isMobile ? "8px 10px" : "8px 14px",
               color: "#fff",
               fontSize: 13,
               fontWeight: 600,
@@ -853,7 +904,7 @@ export function QuickNotes() {
             onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           >
             <Plus size={14} />
-            Add Note
+            {!isMobile && "Add Note"}
           </button>
         </div>
 
@@ -907,8 +958,8 @@ export function QuickNotes() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-                gap: 14,
+                gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(260px, 1fr))",
+                gap: 12,
               }}
             >
               <AnimatePresence>
