@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Volume2, VolumeX, Sun, Moon, X, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Volume2, VolumeX, X, Plus, Trash2 } from "lucide-react";
 
 // ── Constants ──────────────────────────────────────────────────────────────
-const AUTH_KEY = "personal_authed";
+const AUTH_KEY      = "personal_authed";
 const TODO_KEY_TS   = "td_trustage";
 const TODO_KEY_UCLA = "td_ucla";
 
@@ -30,17 +30,6 @@ const SHORTCUTS = [
   { label: "Reddit",   emoji: "🐾",  url: "https://reddit.com" },
   { label: "Netflix",  emoji: "🎬",  url: "https://netflix.com" },
 ];
-
-// Philadelphia sunset/sunrise by month (Eastern local hour)
-const SUNSET  = [17.0, 17.75, 19.0, 19.75, 20.5, 20.85, 20.75, 20.25, 19.5, 18.5, 17.0, 16.5];
-const SUNRISE = [7.3,  6.9,  6.2,  6.5,  5.9,  5.6,  5.7,  6.1,  6.6,  7.1,  6.7,  7.2 ];
-
-function isDarkByTime(): boolean {
-  const d = new Date();
-  const h = d.getHours() + d.getMinutes() / 60;
-  const m = d.getMonth();
-  return h >= SUNSET[m] || h < SUNRISE[m];
-}
 
 // ── WMO weather codes ──────────────────────────────────────────────────────
 function wmoIcon(code: number): string {
@@ -104,10 +93,10 @@ const WEATHER_URL =
   "&temperature_unit=celsius&wind_speed_unit=mph&timezone=America%2FNew_York&forecast_days=7";
 
 function parseWeather(raw: unknown): WData {
-  const d   = raw as Record<string, unknown>;
-  const cur  = d.current  as Record<string, number>;
-  const hrly = d.hourly   as Record<string, unknown[]>;
-  const dly  = d.daily    as Record<string, unknown[]>;
+  const d    = raw as Record<string, unknown>;
+  const cur  = d.current as Record<string, number>;
+  const hrly = d.hourly  as Record<string, unknown[]>;
+  const dly  = d.daily   as Record<string, unknown[]>;
 
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -122,10 +111,10 @@ function parseWeather(raw: unknown): WData {
     const ampm = h24 >= 12 ? "PM" : "AM";
     const h12  = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
     hourly.push({
-      label: `${h12}${ampm}`,
-      icon:  wmoIcon((hrly.weather_code as number[])[i]),
-      tempC: Math.round((hrly.temperature_2m as number[])[i]),
-      precip:(hrly.precipitation_probability as number[])[i] ?? 0,
+      label:  `${h12}${ampm}`,
+      icon:   wmoIcon((hrly.weather_code as number[])[i]),
+      tempC:  Math.round((hrly.temperature_2m as number[])[i]),
+      precip: (hrly.precipitation_probability as number[])[i] ?? 0,
     });
   }
 
@@ -160,7 +149,7 @@ const saveTodos = (key: string, items: Todo[]) => {
   try { localStorage.setItem(key, JSON.stringify(items)); } catch {}
 };
 
-// ── CSS animations (no floating characters) ────────────────────────────────
+// ── CSS animations ─────────────────────────────────────────────────────────
 const ANIM = `
   @keyframes twinkle { 0%,100%{opacity:0.2;transform:scale(1)} 50%{opacity:0.9;transform:scale(1.6)} }
   @keyframes scan-line {
@@ -171,41 +160,68 @@ const ANIM = `
   @keyframes toast-slide { 0%{opacity:0;transform:translateY(12px)} 15%{opacity:1;transform:translateY(0)} 80%{opacity:1} 100%{opacity:0} }
 `;
 
+// ── Dark theme tokens (always dark) ───────────────────────────────────────
+const T = {
+  bg:          "linear-gradient(145deg, #04071a 0%, #0b0420 50%, #060e1c 100%)",
+  card:        "rgba(10,6,28,0.92)",
+  border:      "rgba(255,255,255,0.08)",
+  text:        "#ffffff",
+  muted:       "rgba(255,255,255,0.35)",
+  sub:         "rgba(255,255,255,0.60)",
+  inputBg:     "rgba(255,255,255,0.07)",
+  divider:     "rgba(255,255,255,0.07)",
+  iconBtn:     "rgba(255,255,255,0.06)",
+  iconBtnBrd:  "rgba(255,255,255,0.10)",
+  iconColor:   "rgba(255,255,255,0.5)",
+  todoDoneTxt: "rgba(255,255,255,0.28)",
+  popBg:       "rgba(14,8,36,0.97)",
+};
+
+const card: React.CSSProperties = {
+  background: T.card, border: `1px solid ${T.border}`, borderRadius: 22,
+};
+
+const iconBtn = (extra?: React.CSSProperties): React.CSSProperties => ({
+  display: "flex", alignItems: "center", justifyContent: "center",
+  background: T.iconBtn, border: `1px solid ${T.iconBtnBrd}`,
+  color: T.iconColor, borderRadius: 14, cursor: "pointer",
+  touchAction: "manipulation",
+  ...extra,
+});
+
 // ══════════════════════════════════════════════════════════════════════════════
 export default function IpadDockPage() {
   const router = useRouter();
   const [authed,     setAuthed]     = useState(false);
-  const [dark,       setDark]       = useState(true);
   const [muted,      setMuted]      = useState(false);
   const [showToast,  setShowToast]  = useState(false);
   const [showWeekly, setShowWeekly] = useState(false);
+  const [todoPopup,  setTodoPopup]  = useState<"trustage" | "ucla" | null>(null);
 
   const [zoneTimes, setZoneTimes] = useState<ZoneTime[]>(ZONES.map(() => ({ hhmm: "0:00", ss: "00", ampm: "AM" })));
   const [dateInfo,  setDateInfo]  = useState({ day: "", date: "" });
   const [cal,       setCal]       = useState<{ month: string; year: string; days: CalDay[] }>({ month: "", year: "", days: [] });
   const [weather,   setWeather]   = useState<WData | null>(null);
-
   const [todos,     setTodos]     = useState<{ trustage: Todo[]; ucla: Todo[] }>({ trustage: [], ucla: [] });
   const [inputTS,   setInputTS]   = useState("");
   const [inputUCLA, setInputUCLA] = useState("");
 
-  // ── Auth
+  // Auth
   useEffect(() => {
     if (localStorage.getItem(AUTH_KEY) !== "true") router.replace("/personal");
     else setAuthed(true);
   }, [router]);
 
-  // ── Theme init + font
+  // Font
   useEffect(() => {
-    setDark(isDarkByTime());
     const link = document.createElement("link");
-    link.rel = "stylesheet";
+    link.rel  = "stylesheet";
     link.href = "https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;600&display=swap";
     document.head.appendChild(link);
     return () => { if (document.head.contains(link)) document.head.removeChild(link); };
   }, []);
 
-  // ── Clock
+  // Clock
   useEffect(() => {
     const tick = () => {
       const now = new Date();
@@ -227,19 +243,19 @@ export default function IpadDockPage() {
     return () => clearInterval(id);
   }, []);
 
-  // ── Calendar
+  // Calendar
   useEffect(() => {
     const now = new Date();
     const y = now.getFullYear(), m = now.getMonth(), today = now.getDate();
     const firstDay = new Date(y, m, 1).getDay();
-    const total = new Date(y, m + 1, 0).getDate();
+    const total    = new Date(y, m + 1, 0).getDate();
     const days: CalDay[] = [];
     for (let i = 0; i < firstDay; i++) days.push({ num: null, isToday: false });
     for (let d = 1; d <= total; d++) days.push({ num: d, isToday: d === today });
     setCal({ month: MONTHS[m], year: String(y), days });
   }, []);
 
-  // ── Weather (Open-Meteo, XHR)
+  // Weather (Open-Meteo, XHR for old iOS compat)
   useEffect(() => {
     const go = () => xhrGet(WEATHER_URL, (d) => { try { setWeather(parseWeather(d)); } catch {} }, () => {});
     go();
@@ -247,12 +263,12 @@ export default function IpadDockPage() {
     return () => clearInterval(id);
   }, []);
 
-  // ── Todos
+  // Todos
   useEffect(() => {
     setTodos({ trustage: loadTodos(TODO_KEY_TS), ucla: loadTodos(TODO_KEY_UCLA) });
   }, []);
 
-  // ── Handlers
+  // Handlers
   const handleMute = () => {
     try {
       const ev = { key: "AudioVolumeMute", code: "AudioVolumeMute", keyCode: 173, bubbles: true, cancelable: true };
@@ -293,89 +309,45 @@ export default function IpadDockPage() {
 
   if (!authed) return null;
 
-  // ── Theme tokens
-  const T = dark ? {
-    bg:          "linear-gradient(145deg, #04071a 0%, #0b0420 50%, #060e1c 100%)",
-    card:        "rgba(10,6,28,0.92)",
-    border:      "rgba(255,255,255,0.08)",
-    text:        "#ffffff",
-    muted:       "rgba(255,255,255,0.35)",
-    sub:         "rgba(255,255,255,0.60)",
-    inputBg:     "rgba(255,255,255,0.07)",
-    divider:     "rgba(255,255,255,0.07)",
-    todoBg:      "rgba(255,255,255,0.04)",
-    iconBtn:     "rgba(255,255,255,0.06)",
-    iconBtnBrd:  "rgba(255,255,255,0.10)",
-    iconColor:   "rgba(255,255,255,0.5)",
-    todoDoneTxt: "rgba(255,255,255,0.28)",
-    popBg:       "rgba(14,8,36,0.97)",
-  } : {
-    bg:          "linear-gradient(145deg, #eef2ff 0%, #f3eeff 50%, #e8f5ff 100%)",
-    card:        "rgba(255,255,255,0.94)",
-    border:      "rgba(100,70,200,0.10)",
-    text:        "#1a0a3c",
-    muted:       "rgba(26,10,60,0.38)",
-    sub:         "rgba(26,10,60,0.62)",
-    inputBg:     "rgba(0,0,0,0.04)",
-    divider:     "rgba(0,0,0,0.07)",
-    todoBg:      "rgba(0,0,0,0.02)",
-    iconBtn:     "rgba(0,0,0,0.05)",
-    iconBtnBrd:  "rgba(0,0,0,0.09)",
-    iconColor:   "rgba(26,10,60,0.45)",
-    todoDoneTxt: "rgba(26,10,60,0.28)",
-    popBg:       "rgba(248,246,255,0.98)",
-  };
-
-  const card: React.CSSProperties = { background: T.card, border: `1px solid ${T.border}`, borderRadius: 22 };
-
-  // ── Small icon button style (theme toggle, mute, hub)
-  const iconBtn = (extra?: React.CSSProperties): React.CSSProperties => ({
-    display: "flex", alignItems: "center", justifyContent: "center",
-    background: T.iconBtn, border: `1px solid ${T.iconBtnBrd}`,
-    color: T.iconColor, borderRadius: 14, cursor: "pointer",
-    touchAction: "manipulation",
-    ...extra,
-  });
-
   // ══════════════════════════════════════════════════════════════════════════
   return (
     <>
       <style>{ANIM}</style>
 
-      {/* ── Weekly forecast popup ── */}
+      {/* ── Weekly forecast popup ─────────────────────────────────────────── */}
       {showWeekly && (
         <div
-          style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.72)", display: "flex", alignItems: "center", justifyContent: "center" }}
+          style={{ position:"fixed", inset:0, zIndex:500, background:"rgba(0,0,0,0.72)", display:"flex", alignItems:"center", justifyContent:"center" }}
           onClick={() => setShowWeekly(false)}
         >
           <div
-            style={{ ...card, background: T.popBg, width: "min(78vw,720px)", padding: "28px 32px", boxShadow: "0 40px 100px rgba(0,0,0,0.5)", maxHeight: "80vh", overflowY: "auto" }}
+            style={{ ...card, background:T.popBg, width:"min(78vw,720px)", padding:"28px 32px", boxShadow:"0 40px 100px rgba(0,0,0,0.5)", maxHeight:"80vh", overflowY:"auto" }}
             onClick={e => e.stopPropagation()}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:22 }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: T.text }}>7-Day Forecast</div>
-                <div style={{ fontSize: 13, color: T.muted, marginTop: 2 }}>Downingtown, PA</div>
+                <div style={{ fontSize:20, fontWeight:700, color:T.text }}>7-Day Forecast</div>
+                <div style={{ fontSize:13, color:T.muted, marginTop:2 }}>Downingtown, PA</div>
               </div>
-              <button onClick={() => setShowWeekly(false)} style={{ ...iconBtn({ width: 36, height: 36, borderRadius: 10 }) }}>
+              <button onClick={() => setShowWeekly(false)} style={{ ...iconBtn({ width:36, height:36, borderRadius:10 }) }}>
                 <X size={16} color={T.iconColor} />
               </button>
             </div>
             {weather?.daily.map((day, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 16, padding: "14px 0", borderBottom: i < 6 ? `1px solid ${T.divider}` : "none" }}>
-                <div style={{ width: 56, fontSize: 15, fontWeight: 600, color: T.sub }}>{day.day}</div>
-                <div style={{ fontSize: 30, width: 40 }}>{day.icon}</div>
-                <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: 19, fontWeight: 700, color: T.text }}>{day.highC}°C</span>
-                  <span style={{ fontSize: 12, color: T.muted }}> / {cToF(day.highC)}°F</span>
+              <div key={i} style={{ display:"flex", alignItems:"center", gap:16, padding:"14px 0", borderBottom: i < 6 ? `1px solid ${T.divider}` : "none" }}>
+                <div style={{ width:56, fontSize:15, fontWeight:600, color:T.sub }}>{day.day}</div>
+                <div style={{ fontSize:30, width:40 }}>{day.icon}</div>
+                <div style={{ flex:1 }}>
+                  <span style={{ fontSize:19, fontWeight:700, color:T.text }}>{day.highC}°C</span>
+                  <span style={{ fontSize:12, color:T.muted }}> / {cToF(day.highC)}°F</span>
                 </div>
-                <div style={{ fontSize: 14, color: T.muted }}>{day.lowC}°C<span style={{ fontSize: 11 }}> / {cToF(day.lowC)}°F</span></div>
-                <div style={{ display: "flex", alignItems: "center", gap: 5, width: 80 }}>
-                  <span style={{ fontSize: 14 }}>💧</span>
-                  <div style={{ flex: 1, height: 5, borderRadius: 3, background: "rgba(96,165,250,0.18)", overflow: "hidden" }}>
-                    <div style={{ width: `${day.precip}%`, height: "100%", background: "#60a5fa", borderRadius: 3 }} />
+                <div style={{ fontSize:14, color:T.muted }}>{day.lowC}°C<span style={{ fontSize:11 }}> / {cToF(day.lowC)}°F</span></div>
+                <div style={{ display:"flex", alignItems:"center", gap:5, width:80 }}>
+                  <span style={{ fontSize:14 }}>💧</span>
+                  <div style={{ flex:1, height:5, borderRadius:3, background:"rgba(96,165,250,0.18)", overflow:"hidden" }}>
+                    <div style={{ width:`${day.precip}%`, height:"100%", background:"#60a5fa", borderRadius:3 }} />
                   </div>
-                  <span style={{ fontSize: 12, color: "#60a5fa", minWidth: 28 }}>{day.precip}%</span>
+                  <span style={{ fontSize:12, color:"#60a5fa", minWidth:28 }}>{day.precip}%</span>
                 </div>
               </div>
             ))}
@@ -383,316 +355,283 @@ export default function IpadDockPage() {
         </div>
       )}
 
-      {/* ── Mute toast ── */}
+      {/* ── Todo popup ────────────────────────────────────────────────────── */}
+      {todoPopup && (() => {
+        const sec   = todoPopup;
+        const color = sec === "trustage" ? "#60a5fa" : "#a78bfa";
+        const label = sec === "trustage" ? "TruStage" : "UCLA";
+        const emoji = sec === "trustage" ? "🏢" : "🎓";
+        const inputVal = sec === "trustage" ? inputTS : inputUCLA;
+        const setInput = sec === "trustage" ? setInputTS : setInputUCLA;
+        return (
+          <div
+            style={{ position:"fixed", inset:0, zIndex:500, background:"rgba(0,0,0,0.78)", display:"flex", alignItems:"center", justifyContent:"center" }}
+            onClick={() => setTodoPopup(null)}
+          >
+            <div
+              style={{ ...card, background:T.popBg, width:"min(70vw,660px)", maxHeight:"82vh", display:"flex", flexDirection:"column", padding:"26px 30px", boxShadow:"0 40px 100px rgba(0,0,0,0.6)" }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                  <span style={{ fontSize:26 }}>{emoji}</span>
+                  <span style={{ fontSize:22, fontWeight:700, color }}>{label}</span>
+                </div>
+                <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+                  <span style={{ fontSize:14, color:T.muted }}>{todos[sec].filter(t=>!t.done).length} remaining</span>
+                  <button onClick={() => setTodoPopup(null)} style={{ ...iconBtn({ width:38, height:38, borderRadius:11 }) }}>
+                    <X size={17} color={T.iconColor} />
+                  </button>
+                </div>
+              </div>
+
+              {/* List */}
+              <div style={{ flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:2 }}>
+                {todos[sec].length === 0 && (
+                  <div style={{ fontSize:16, color:T.muted, textAlign:"center", marginTop:36, opacity:0.6 }}>
+                    No tasks yet — add one below
+                  </div>
+                )}
+                {todos[sec].map(todo => (
+                  <div key={todo.id} style={{ display:"flex", alignItems:"center", gap:14, padding:"13px 6px", borderBottom:`1px solid ${T.divider}` }}>
+                    <button
+                      onClick={() => toggleTodo(sec, todo.id)}
+                      style={{ flexShrink:0, width:30, height:30, borderRadius:9, border:`2px solid ${todo.done ? color : T.border}`, background: todo.done ? color : "transparent", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", touchAction:"manipulation" }}
+                    >
+                      {todo.done && <span style={{ color:"#fff", fontSize:16, fontWeight:800, lineHeight:1 }}>✓</span>}
+                    </button>
+                    <span style={{ flex:1, fontSize:20, fontWeight:500, color: todo.done ? T.todoDoneTxt : T.text, textDecoration: todo.done ? "line-through" : "none", lineHeight:1.4 }}>
+                      {todo.text}
+                    </span>
+                    <button onClick={() => deleteTodo(sec, todo.id)} style={{ flexShrink:0, background:"none", border:"none", cursor:"pointer", color:T.muted, opacity:0.5, padding:"0 4px", touchAction:"manipulation" }}>
+                      <Trash2 size={17} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Add input */}
+              <div style={{ display:"flex", gap:10, marginTop:18, paddingTop:16, borderTop:`1px solid ${T.divider}` }}>
+                <input
+                  value={inputVal}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") addTodo(sec, inputVal); }}
+                  placeholder="Add new task…"
+                  style={{ flex:1, background:T.inputBg, border:`1px solid ${T.border}`, borderRadius:12, padding:"13px 16px", color:T.text, fontSize:17, outline:"none", caretColor:color }}
+                />
+                <button
+                  onClick={() => addTodo(sec, inputVal)}
+                  style={{ flexShrink:0, width:48, height:48, borderRadius:13, background:color, border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", touchAction:"manipulation" }}
+                >
+                  <Plus size={22} color="#fff" />
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Mute toast ────────────────────────────────────────────────────── */}
       {showToast && (
-        <div style={{
-          position: "fixed", bottom: 30, left: "50%", transform: "translateX(-50%)",
-          zIndex: 600, background: "rgba(30,20,60,0.92)", color: "#fff",
-          padding: "10px 20px", borderRadius: 12, fontSize: 13,
-          border: "1px solid rgba(255,255,255,0.12)",
-          animation: "toast-slide 2.5s ease forwards",
-          whiteSpace: "nowrap",
-        }}>
+        <div style={{ position:"fixed", bottom:30, left:"50%", transform:"translateX(-50%)", zIndex:600, background:"rgba(30,20,60,0.92)", color:"#fff", padding:"10px 20px", borderRadius:12, fontSize:13, border:"1px solid rgba(255,255,255,0.12)", animation:"toast-slide 2.5s ease forwards", whiteSpace:"nowrap" }}>
           {muted ? "🔇 Muted — also press Fn+Mute key for system audio" : "🔊 Unmuted"}
         </div>
       )}
 
-      {/* ── Ambient orbs ── */}
-      <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 }}>
-        {dark && <>
-          <div style={{ position: "absolute", width: 700, height: 700, borderRadius: "50%", background: "radial-gradient(circle, rgba(124,90,245,0.35), transparent 70%)", top: -250, left: -200, animation: "orb-pulse 8s ease-in-out infinite" }} />
-          <div style={{ position: "absolute", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(244,114,182,0.28), transparent 70%)", bottom: -150, right: 100, animation: "orb-pulse 11s ease-in-out infinite 3s" }} />
-          <div style={{ position: "absolute", width: 380, height: 380, borderRadius: "50%", background: "radial-gradient(circle, rgba(52,211,153,0.20), transparent 70%)", top: "40%", right: -100, animation: "orb-pulse 9s ease-in-out infinite 5s" }} />
-        </>}
+      {/* ── Ambient orbs ──────────────────────────────────────────────────── */}
+      <div style={{ position:"fixed", inset:0, pointerEvents:"none", zIndex:0 }}>
+        <div style={{ position:"absolute", width:700, height:700, borderRadius:"50%", background:"radial-gradient(circle, rgba(124,90,245,0.35), transparent 70%)", top:-250, left:-200, animation:"orb-pulse 8s ease-in-out infinite" }} />
+        <div style={{ position:"absolute", width:500, height:500, borderRadius:"50%", background:"radial-gradient(circle, rgba(244,114,182,0.28), transparent 70%)", bottom:-150, right:100, animation:"orb-pulse 11s ease-in-out infinite 3s" }} />
+        <div style={{ position:"absolute", width:380, height:380, borderRadius:"50%", background:"radial-gradient(circle, rgba(52,211,153,0.20), transparent 70%)", top:"40%", right:-100, animation:"orb-pulse 9s ease-in-out infinite 5s" }} />
       </div>
 
-      {/* ── Star dots (dark mode only) ── */}
-      {dark && [[8,12],[15,88],[22,35],[35,7],[42,65],[55,22],[62,80],[70,45],[78,15],[85,72],[92,38],[5,55],[48,92],[88,5]].map(([l,t],i) => (
-        <div key={i} style={{ position:"fixed", left:`${l}%`, top:`${t}%`, width: i%3===0?3:2, height: i%3===0?3:2, borderRadius:"50%", background:"#fff", opacity:0.3, pointerEvents:"none", zIndex:0, animation:`twinkle ${2.5+i*0.4}s ease-in-out infinite ${i*0.3}s` }} />
+      {/* ── Star dots ─────────────────────────────────────────────────────── */}
+      {[[8,12],[15,88],[22,35],[35,7],[42,65],[55,22],[62,80],[70,45],[78,15],[85,72],[92,38],[5,55],[48,92],[88,5]].map(([l,t],i) => (
+        <div key={i} style={{ position:"fixed", left:`${l}%`, top:`${t}%`, width:i%3===0?3:2, height:i%3===0?3:2, borderRadius:"50%", background:"#fff", opacity:0.3, pointerEvents:"none", zIndex:0, animation:`twinkle ${2.5+i*0.4}s ease-in-out infinite ${i*0.3}s` }} />
       ))}
 
-      {/* ══════════════════════════════════════════════════════
-          PAGE SHELL — left 70% + right 30% todo sidebar
-      ══════════════════════════════════════════════════════ */}
-      <div style={{ display:"flex", width:"100vw", height:"100vh", overflow:"hidden", background: T.bg, color: T.text, fontFamily:"'Inter',-apple-system,sans-serif", userSelect:"none", WebkitUserSelect:"none", position:"relative", zIndex:1 }}>
+      {/* ══ PAGE SHELL — column: [content row] + [dock banner] ═══════════════ */}
+      <div style={{ display:"flex", flexDirection:"column", width:"100vw", height:"100vh", overflow:"hidden", background:T.bg, color:T.text, fontFamily:"'Inter',-apple-system,sans-serif", userSelect:"none", WebkitUserSelect:"none", position:"relative", zIndex:1 }}>
 
-        {/* ── LEFT MAIN (70%) ── */}
-        <div style={{ flex:"0 0 70%", display:"flex", flexDirection:"column", gap:10, padding:"14px 6px 14px 14px", minWidth:0 }}>
+        {/* ── TOP CONTENT (flex:1) ─────────────────────────────────────────── */}
+        <div style={{ flex:1, display:"flex", gap:10, padding:"14px 14px 0 14px", minHeight:0 }}>
 
-          {/* Top bar */}
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
-            {/* Hub */}
-            <button onClick={() => router.push("/personal")} style={{ ...iconBtn({ padding:"7px 14px", gap:6, borderRadius:11, fontSize:12 }), display:"flex", alignItems:"center", gap:6 }}>
-              <ArrowLeft size={12} color={T.iconColor} />
-              <span style={{ color: T.iconColor }}>Hub</span>
-            </button>
+          {/* LEFT MAIN ~68% */}
+          <div style={{ flex:"0 0 68%", display:"flex", flexDirection:"column", gap:10, minWidth:0 }}>
 
-            {/* Date */}
-            <div style={{ fontSize:"clamp(11px,1.1vw,15px)", color: T.muted, letterSpacing:"1.5px", textTransform:"uppercase" }}>
-              {dateInfo.day} · {dateInfo.date}
-            </div>
-
-            {/* Theme + Mute */}
-            <div style={{ display:"flex", gap:10, alignItems:"center" }}>
-              {/* Theme toggle */}
-              <button
-                onClick={() => setDark(d => !d)}
-                title={dark ? "Switch to Light" : "Switch to Dark"}
-                style={{ ...iconBtn({ width:46, height:46, borderRadius:14 }) }}
-              >
-                {dark ? <Sun size={20} color="#f59e0b" /> : <Moon size={20} color="#6366f1" />}
+            {/* Top bar: Hub | Date | Mute */}
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
+              <button onClick={() => router.push("/personal")} style={{ ...iconBtn({ padding:"7px 14px", borderRadius:11, fontSize:12 }), display:"flex", alignItems:"center", gap:6 }}>
+                <ArrowLeft size={12} color={T.iconColor} />
+                <span style={{ color:T.iconColor }}>Hub</span>
               </button>
 
-              {/* Mute — bigger for touch */}
+              <div style={{ fontSize:"clamp(11px,1.1vw,15px)", color:T.muted, letterSpacing:"1.5px", textTransform:"uppercase" }}>
+                {dateInfo.day} · {dateInfo.date}
+              </div>
+
               <button
                 onClick={handleMute}
                 title={muted ? "Unmute" : "Mute"}
-                style={{
-                  ...iconBtn({
-                    width: 64, height: 64, borderRadius: 18,
-                    background: muted ? "rgba(248,113,113,0.18)" : T.iconBtn,
-                    border: muted ? "1px solid rgba(248,113,113,0.45)" : `1px solid ${T.iconBtnBrd}`,
-                  }),
-                  animation: muted ? "mute-ring 2s ease-in-out infinite" : "none",
-                }}
+                style={{ ...iconBtn({ width:58, height:58, borderRadius:16, background: muted ? "rgba(248,113,113,0.18)" : T.iconBtn, border: muted ? "1px solid rgba(248,113,113,0.45)" : `1px solid ${T.iconBtnBrd}` }), animation: muted ? "mute-ring 2s ease-in-out infinite" : "none" }}
               >
-                {muted
-                  ? <VolumeX size={26} color="#f87171" />
-                  : <Volume2 size={26} color={T.iconColor} />
-                }
+                {muted ? <VolumeX size={24} color="#f87171" /> : <Volume2 size={24} color={T.iconColor} />}
               </button>
             </div>
-          </div>
 
-          {/* ── CLOCKS: PST+CST (left) | EST (right) ── */}
-          <div style={{ flex:"1.7", display:"grid", gridTemplateColumns:"0.6fr 1fr", gap:10, minHeight:0 }}>
+            {/* CLOCKS: PST+CST stacked | EST big */}
+            <div style={{ flex:"1.7", display:"grid", gridTemplateColumns:"0.6fr 1fr", gap:10, minHeight:0 }}>
 
-            {/* PST + CST stacked in one card */}
-            <div style={{ ...card, display:"flex", flexDirection:"column", overflow:"hidden", position:"relative" }}>
-              {[0,1].map((i) => (
-                <div key={i} style={{
-                  flex:1, display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center", textAlign:"center",
-                  padding:"14px 16px",
-                  borderBottom: i === 0 ? `1px solid ${T.border}` : "none",
-                  position:"relative", overflow:"hidden",
-                }}>
-                  {/* Scan line */}
-                  <div style={{ position:"absolute", left:0, right:0, height:1, background:`linear-gradient(90deg,transparent,${ZONES[i].color}55,transparent)`, animation:`scan-line ${6+i}s linear infinite ${i*2}s`, pointerEvents:"none" }} />
-                  {/* Corner dot */}
-                  <div style={{ position:"absolute", top:10, right:12, width:6, height:6, borderRadius:"50%", background:ZONES[i].color, boxShadow:`0 0 10px ${ZONES[i].color}`, animation:`twinkle 2s ease-in-out infinite ${i*0.7}s` }} />
-
-                  <div style={{ fontSize:"clamp(10px,1.3vw,17px)", fontWeight:800, color:ZONES[i].color, letterSpacing:"0.32em", textTransform:"uppercase", marginBottom:6, textShadow:`0 0 18px ${ZONES[i].color}` }}>
-                    {ZONES[i].label}
-                  </div>
-                  <div style={{ fontFamily:"'Orbitron','Courier New',monospace", fontSize:"clamp(30px,3.8vw,58px)", fontWeight:900, letterSpacing:2, lineHeight:1, color:T.text, filter:`drop-shadow(0 0 20px ${ZONES[i].glow})`, whiteSpace:"nowrap" }}>
-                    {zoneTimes[i].hhmm}
-                  </div>
-                  <div style={{ fontSize:"clamp(10px,1.2vw,16px)", fontWeight:700, color:ZONES[i].color, letterSpacing:"0.2em", marginTop:5, opacity:0.85 }}>
-                    {zoneTimes[i].ampm}
-                  </div>
-                  <div style={{ fontSize:"clamp(9px,0.9vw,13px)", color:T.muted, letterSpacing:"2px", textTransform:"uppercase", marginTop:6 }}>
-                    {ZONES[i].city}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* EST — big */}
-            <div style={{ ...card, display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center", textAlign:"center", position:"relative", overflow:"hidden", boxShadow:`0 0 80px ${ZONES[2].glow}22, inset 0 1px 0 ${ZONES[2].color}15` }}>
-              <div style={{ position:"absolute", left:0, right:0, height:1, background:`linear-gradient(90deg,transparent,${ZONES[2].color}55,transparent)`, animation:"scan-line 8s linear infinite 4s", pointerEvents:"none" }} />
-              <div style={{ position:"absolute", top:14, right:18, width:9, height:9, borderRadius:"50%", background:ZONES[2].color, boxShadow:`0 0 16px ${ZONES[2].color}`, animation:"twinkle 2s ease-in-out infinite 1.4s" }} />
-
-              <div style={{ fontSize:"clamp(15px,2vw,28px)", fontWeight:800, color:ZONES[2].color, letterSpacing:"0.35em", textTransform:"uppercase", marginBottom:"clamp(10px,2vh,22px)", textShadow:`0 0 28px ${ZONES[2].color}` }}>
-                EST
-              </div>
-
-              {/* H:MM large + :SS smaller */}
-              <div style={{ display:"flex", alignItems:"baseline", gap:"clamp(4px,0.5vw,8px)" }}>
-                <span style={{ fontFamily:"'Orbitron','Courier New',monospace", fontSize:"clamp(58px,7.5vw,110px)", fontWeight:900, letterSpacing:3, lineHeight:1, color:T.text, filter:`drop-shadow(0 0 36px ${ZONES[2].glow})`, whiteSpace:"nowrap" }}>
-                  {zoneTimes[2].hhmm}
-                </span>
-                <span style={{ fontFamily:"'Orbitron','Courier New',monospace", fontSize:"clamp(22px,3vw,44px)", fontWeight:700, color:ZONES[2].color, opacity:0.75, whiteSpace:"nowrap", marginBottom:"clamp(4px,0.5vh,8px)" }}>
-                  :{zoneTimes[2].ss}
-                </span>
-              </div>
-
-              <div style={{ fontSize:"clamp(14px,1.8vw,26px)", fontWeight:700, color:ZONES[2].color, letterSpacing:"0.2em", marginTop:"clamp(6px,1vh,14px)", opacity:0.85 }}>
-                {zoneTimes[2].ampm}
-              </div>
-              <div style={{ fontSize:"clamp(10px,1.2vw,16px)", color:T.muted, letterSpacing:"3px", textTransform:"uppercase", marginTop:"clamp(10px,1.8vh,20px)" }}>
-                New York
-              </div>
-            </div>
-          </div>
-
-          {/* ── MIDDLE: Weather (clickable) | Calendar ── */}
-          <div style={{ flex:"1", display:"grid", gridTemplateColumns:"0.85fr 1.15fr", gap:10, minHeight:0 }}>
-
-            {/* Weather card — click for weekly popup */}
-            <div
-              onClick={() => weather && setShowWeekly(true)}
-              style={{ ...card, padding:"clamp(12px,1.6vh,18px) clamp(12px,1.6vw,18px)", display:"flex", flexDirection:"column", cursor: weather ? "pointer" : "default", overflow:"hidden" }}
-            >
-              {/* Top: icon + big temp */}
-              <div style={{ display:"flex", alignItems:"center", gap:14, flexShrink:0 }}>
-                <div style={{ fontSize:"clamp(42px,5.5vw,68px)", lineHeight:1, flexShrink:0 }}>{weather?.icon ?? "🌤"}</div>
-                <div style={{ minWidth:0 }}>
-                  <div style={{ display:"flex", alignItems:"baseline", gap:10, flexWrap:"wrap" }}>
-                    <span style={{ fontSize:"clamp(36px,4.8vw,64px)", fontWeight:700, lineHeight:1, color:T.text }}>{weather?.tempC ?? "--"}°C</span>
-                    <span style={{ fontSize:"clamp(18px,2.2vw,26px)", color:T.muted, fontWeight:500 }}>{weather ? cToF(weather.tempC) : "--"}°F</span>
-                  </div>
-                  {/* Condition — now clearly readable */}
-                  <div style={{ fontSize:"clamp(14px,1.6vw,20px)", fontWeight:600, color:T.sub, marginTop:4 }}>
-                    {weather?.desc ?? "Loading…"}
-                  </div>
-                  <div style={{ fontSize:"clamp(11px,1.2vw,14px)", color:T.muted, marginTop:2 }}>
-                    Downingtown, PA
-                  </div>
-                </div>
-              </div>
-
-              {/* Metadata row — labeled, readable */}
-              <div style={{ display:"flex", gap:"clamp(14px,2vw,24px)", marginTop:"clamp(8px,1.2vh,12px)", flexShrink:0 }}>
-                {([["Feels like", `${weather?.feelsC ?? "--"}°C`], ["Wind", `${weather?.windMph ?? "--"} mph`], ["Humidity", `${weather?.humidity ?? "--"}%`]] as [string,string][]).map(([lbl, val]) => (
-                  <div key={lbl}>
-                    <div style={{ fontSize:"clamp(14px,1.6vw,20px)", fontWeight:700, color:T.text }}>{val}</div>
-                    <div style={{ fontSize:"clamp(10px,1.1vw,13px)", color:T.muted, textTransform:"uppercase", letterSpacing:"0.6px", marginTop:1 }}>{lbl}</div>
+              {/* PST + CST */}
+              <div style={{ ...card, display:"flex", flexDirection:"column", overflow:"hidden", position:"relative" }}>
+                {[0,1].map((i) => (
+                  <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center", textAlign:"center", padding:"14px 16px", borderBottom: i === 0 ? `1px solid ${T.border}` : "none", position:"relative", overflow:"hidden" }}>
+                    <div style={{ position:"absolute", left:0, right:0, height:1, background:`linear-gradient(90deg,transparent,${ZONES[i].color}55,transparent)`, animation:`scan-line ${6+i}s linear infinite ${i*2}s`, pointerEvents:"none" }} />
+                    <div style={{ position:"absolute", top:10, right:12, width:6, height:6, borderRadius:"50%", background:ZONES[i].color, boxShadow:`0 0 10px ${ZONES[i].color}`, animation:`twinkle 2s ease-in-out infinite ${i*0.7}s` }} />
+                    <div style={{ fontSize:"clamp(10px,1.3vw,17px)", fontWeight:800, color:ZONES[i].color, letterSpacing:"0.32em", textTransform:"uppercase", marginBottom:6, textShadow:`0 0 18px ${ZONES[i].color}` }}>{ZONES[i].label}</div>
+                    <div style={{ fontFamily:"'Orbitron','Courier New',monospace", fontSize:"clamp(30px,3.8vw,58px)", fontWeight:900, letterSpacing:2, lineHeight:1, color:T.text, filter:`drop-shadow(0 0 20px ${ZONES[i].glow})`, whiteSpace:"nowrap" }}>{zoneTimes[i].hhmm}</div>
+                    <div style={{ fontSize:"clamp(10px,1.2vw,16px)", fontWeight:700, color:ZONES[i].color, letterSpacing:"0.2em", marginTop:5, opacity:0.85 }}>{zoneTimes[i].ampm}</div>
+                    <div style={{ fontSize:"clamp(9px,0.9vw,13px)", color:T.muted, letterSpacing:"2px", textTransform:"uppercase", marginTop:6 }}>{ZONES[i].city}</div>
                   </div>
                 ))}
               </div>
 
-              {/* Tap hint */}
-              {weather && (
-                <div style={{ fontSize:"clamp(10px,1.1vw,13px)", color:T.muted, opacity:0.55, marginTop:"clamp(4px,0.7vh,8px)", letterSpacing:"0.5px" }}>
-                  TAP FOR WEEKLY FORECAST ▸
+              {/* EST */}
+              <div style={{ ...card, display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center", textAlign:"center", position:"relative", overflow:"hidden", boxShadow:`0 0 80px ${ZONES[2].glow}22, inset 0 1px 0 ${ZONES[2].color}15` }}>
+                <div style={{ position:"absolute", left:0, right:0, height:1, background:`linear-gradient(90deg,transparent,${ZONES[2].color}55,transparent)`, animation:"scan-line 8s linear infinite 4s", pointerEvents:"none" }} />
+                <div style={{ position:"absolute", top:14, right:18, width:9, height:9, borderRadius:"50%", background:ZONES[2].color, boxShadow:`0 0 16px ${ZONES[2].color}`, animation:"twinkle 2s ease-in-out infinite 1.4s" }} />
+                <div style={{ fontSize:"clamp(15px,2vw,28px)", fontWeight:800, color:ZONES[2].color, letterSpacing:"0.35em", textTransform:"uppercase", marginBottom:"clamp(10px,2vh,22px)", textShadow:`0 0 28px ${ZONES[2].color}` }}>EST</div>
+                <div style={{ display:"flex", alignItems:"baseline", gap:"clamp(4px,0.5vw,8px)" }}>
+                  <span style={{ fontFamily:"'Orbitron','Courier New',monospace", fontSize:"clamp(58px,7.5vw,110px)", fontWeight:900, letterSpacing:3, lineHeight:1, color:T.text, filter:`drop-shadow(0 0 36px ${ZONES[2].glow})`, whiteSpace:"nowrap" }}>{zoneTimes[2].hhmm}</span>
+                  <span style={{ fontFamily:"'Orbitron','Courier New',monospace", fontSize:"clamp(22px,3vw,44px)", fontWeight:700, color:ZONES[2].color, opacity:0.75, whiteSpace:"nowrap", marginBottom:"clamp(4px,0.5vh,8px)" }}>:{zoneTimes[2].ss}</span>
                 </div>
-              )}
+                <div style={{ fontSize:"clamp(14px,1.8vw,26px)", fontWeight:700, color:ZONES[2].color, letterSpacing:"0.2em", marginTop:"clamp(6px,1vh,14px)", opacity:0.85 }}>{zoneTimes[2].ampm}</div>
+                <div style={{ fontSize:"clamp(10px,1.2vw,16px)", color:T.muted, letterSpacing:"3px", textTransform:"uppercase", marginTop:"clamp(10px,1.8vh,20px)" }}>New York</div>
+              </div>
+            </div>
 
-              {/* Hourly strip — bigger items */}
-              <div style={{ flex:1, display:"flex", overflowX:"auto", gap:"clamp(8px,1.1vw,16px)", marginTop:"clamp(8px,1.2vh,12px)", paddingBottom:4, alignItems:"flex-start" }}>
-                {(weather?.hourly ?? []).map((h, i) => (
-                  <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3, flexShrink:0, minWidth:"clamp(44px,5.5vw,64px)" }}>
-                    <div style={{ fontSize:"clamp(11px,1.3vw,15px)", color:T.muted, whiteSpace:"nowrap", fontWeight:500 }}>{h.label}</div>
-                    <div style={{ fontSize:"clamp(24px,3.2vw,40px)", lineHeight:1 }}>{h.icon}</div>
-                    <div style={{ fontSize:"clamp(13px,1.5vw,18px)", fontWeight:700, color:T.text }}>{h.tempC}°</div>
-                    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
-                      <div style={{ width:"clamp(28px,3.2vw,40px)", height:4, borderRadius:2, background:"rgba(96,165,250,0.15)", overflow:"hidden" }}>
-                        <div style={{ width:`${h.precip}%`, height:"100%", background:"#60a5fa", borderRadius:2 }} />
-                      </div>
-                      {h.precip > 5 && <div style={{ fontSize:"clamp(10px,1.1vw,13px)", color:"#60a5fa", fontWeight:600 }}>{h.precip}%</div>}
+            {/* MIDDLE: Weather | Calendar */}
+            <div style={{ flex:"1", display:"grid", gridTemplateColumns:"0.85fr 1.15fr", gap:10, minHeight:0 }}>
+
+              {/* Weather */}
+              <div onClick={() => weather && setShowWeekly(true)} style={{ ...card, padding:"clamp(10px,1.4vh,16px) clamp(10px,1.4vw,16px)", display:"flex", flexDirection:"column", cursor: weather ? "pointer" : "default", overflow:"hidden" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
+                  <div style={{ fontSize:"clamp(38px,5vw,62px)", lineHeight:1, flexShrink:0 }}>{weather?.icon ?? "🌤"}</div>
+                  <div style={{ minWidth:0 }}>
+                    <div style={{ display:"flex", alignItems:"baseline", gap:8, flexWrap:"wrap" }}>
+                      <span style={{ fontSize:"clamp(32px,4.2vw,58px)", fontWeight:700, lineHeight:1, color:T.text }}>{weather?.tempC ?? "--"}°C</span>
+                      <span style={{ fontSize:"clamp(16px,2vw,24px)", color:T.muted, fontWeight:500 }}>{weather ? cToF(weather.tempC) : "--"}°F</span>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Calendar — bigger numbers */}
-            <div style={{ ...card, padding:"clamp(14px,2vh,22px) clamp(14px,2vw,24px)", display:"flex", flexDirection:"column" }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:"clamp(10px,1.4vh,16px)", flexShrink:0 }}>
-                <div style={{ fontSize:"clamp(15px,1.8vw,24px)", fontWeight:700, letterSpacing:"clamp(2px,0.3vw,4px)", textTransform:"uppercase", color:T.text }}>{cal.month}</div>
-                <div style={{ fontSize:"clamp(12px,1.4vw,18px)", color:T.muted }}>{cal.year}</div>
-              </div>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:"clamp(2px,0.3vw,5px)", flex:1, alignContent:"start" }}>
-                {["Su","Mo","Tu","We","Th","Fr","Sa"].map(h => (
-                  <div key={h} style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"clamp(22px,2.4vh,30px)", fontSize:"clamp(10px,1.05vw,14px)", color:T.muted, fontWeight:600 }}>{h}</div>
-                ))}
-                {cal.days.map((d, i) => (
-                  <div key={i} style={{
-                    display:"flex", alignItems:"center", justifyContent:"center",
-                    height:"clamp(36px,4.2vh,54px)",
-                    fontSize:"clamp(15px,1.8vw,24px)",
-                    borderRadius:"clamp(8px,0.9vw,13px)",
-                    color: d.num ? (d.isToday ? "#fff" : T.sub) : "transparent",
-                    background: d.isToday ? "rgba(124,90,245,0.85)" : "transparent",
-                    fontWeight: d.isToday ? 700 : 400,
-                    boxShadow: d.isToday ? "0 0 18px rgba(124,90,245,0.6)" : "none",
-                  }}>{d.num}</div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* ── DOCK ── */}
-          <div style={{ ...card, height:"clamp(82px,9vh,116px)", display:"flex", alignItems:"center", justifyContent:"center", gap:"clamp(2px,1.2vw,16px)", padding:"0 clamp(10px,1.5vw,22px)", flexShrink:0 }}>
-            {SHORTCUTS.map(s => (
-              <button key={s.label} onClick={() => openMain(s.url)}
-                style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"clamp(3px,0.5vh,6px)", background:"none", border:"none", color:T.text, padding:"6px clamp(5px,1vw,12px)", borderRadius:14, cursor:"pointer", WebkitTapHighlightColor:"transparent", transition:"transform 0.15s ease", touchAction:"manipulation" }}
-                onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.18) translateY(-5px)"; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = "scale(1) translateY(0)"; }}
-              >
-                <div style={{ width:"clamp(42px,5vw,64px)", height:"clamp(42px,5vw,64px)", borderRadius:"clamp(10px,1.2vw,15px)", background:T.inputBg, border:`1px solid ${T.border}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"clamp(22px,3vw,38px)", lineHeight:1 }}>
-                  {s.emoji}
-                </div>
-                <div style={{ fontSize:"clamp(7px,0.8vw,11px)", color:T.muted, whiteSpace:"nowrap" }}>{s.label}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* ── RIGHT TODO SIDEBAR (30%) ── */}
-        <div style={{ flex:"0 0 30%", display:"flex", flexDirection:"column", gap:10, padding:"14px 14px 14px 6px", minWidth:0 }}>
-          {(["trustage","ucla"] as const).map(sec => {
-            const color    = sec === "trustage" ? "#60a5fa" : "#a78bfa";
-            const label    = sec === "trustage" ? "TruStage" : "UCLA";
-            const emoji    = sec === "trustage" ? "🏢" : "🎓";
-            const inputVal = sec === "trustage" ? inputTS : inputUCLA;
-            const setInput = sec === "trustage" ? setInputTS : setInputUCLA;
-
-            return (
-              <div key={sec} style={{ ...card, flex:1, display:"flex", flexDirection:"column", overflow:"hidden", minHeight:0 }}>
-                {/* Section header */}
-                <div style={{ padding:"14px 16px 10px", borderBottom:`1px solid ${T.divider}`, flexShrink:0 }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                    <span style={{ fontSize:18 }}>{emoji}</span>
-                    <span style={{ fontSize:"clamp(13px,1.4vw,18px)", fontWeight:700, color, letterSpacing:"0.5px" }}>{label}</span>
-                    <span style={{ marginLeft:"auto", fontSize:"clamp(10px,1vw,13px)", color:T.muted }}>{todos[sec].filter(t=>!t.done).length} left</span>
+                    <div style={{ fontSize:"clamp(13px,1.5vw,18px)", fontWeight:600, color:T.sub, marginTop:3 }}>{weather?.desc ?? "Loading…"}</div>
+                    <div style={{ fontSize:"clamp(10px,1.1vw,13px)", color:T.muted, marginTop:2 }}>Downingtown, PA</div>
                   </div>
                 </div>
-
-                {/* Todo list — scrollable */}
-                <div style={{ flex:1, overflowY:"auto", padding:"8px 12px" }}>
-                  {todos[sec].length === 0 && (
-                    <div style={{ fontSize:"clamp(11px,1.1vw,14px)", color:T.muted, textAlign:"center", marginTop:20, opacity:0.6 }}>No tasks yet</div>
-                  )}
-                  {todos[sec].map(todo => (
-                    <div key={todo.id} style={{ display:"flex", alignItems:"flex-start", gap:8, padding:"7px 4px", borderBottom:`1px solid ${T.divider}` }}>
-                      {/* Checkbox */}
-                      <button
-                        onClick={() => toggleTodo(sec, todo.id)}
-                        style={{ flexShrink:0, width:20, height:20, borderRadius:6, border:`1.5px solid ${todo.done ? color : T.border}`, background: todo.done ? color : "transparent", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", marginTop:1, touchAction:"manipulation" }}
-                      >
-                        {todo.done && <span style={{ color:"#fff", fontSize:11, lineHeight:1 }}>✓</span>}
-                      </button>
-                      <span style={{ flex:1, fontSize:"clamp(14px,1.5vw,18px)", color: todo.done ? T.todoDoneTxt : T.text, textDecoration: todo.done ? "line-through" : "none", lineHeight:1.4 }}>
-                        {todo.text}
-                      </span>
-                      <button onClick={() => deleteTodo(sec, todo.id)} style={{ flexShrink:0, background:"none", border:"none", cursor:"pointer", color:T.muted, opacity:0.5, padding:"0 2px", touchAction:"manipulation" }}>
-                        <Trash2 size={13} />
-                      </button>
+                <div style={{ display:"flex", gap:"clamp(12px,1.8vw,22px)", marginTop:"clamp(6px,1vh,10px)", flexShrink:0 }}>
+                  {([["Feels like", `${weather?.feelsC ?? "--"}°C`], ["Wind", `${weather?.windMph ?? "--"} mph`], ["Humidity", `${weather?.humidity ?? "--"}%`]] as [string,string][]).map(([lbl, val]) => (
+                    <div key={lbl}>
+                      <div style={{ fontSize:"clamp(13px,1.5vw,18px)", fontWeight:700, color:T.text }}>{val}</div>
+                      <div style={{ fontSize:"clamp(9px,1vw,12px)", color:T.muted, textTransform:"uppercase", letterSpacing:"0.5px", marginTop:1 }}>{lbl}</div>
                     </div>
                   ))}
                 </div>
-
-                {/* Add input */}
-                <div style={{ padding:"8px 12px 12px", borderTop:`1px solid ${T.divider}`, flexShrink:0, display:"flex", gap:6 }}>
-                  <input
-                    value={inputVal}
-                    onChange={e => setInput(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && addTodo(sec, inputVal)}
-                    placeholder="Add task…"
-                    style={{ flex:1, background:T.inputBg, border:`1px solid ${T.border}`, borderRadius:10, padding:"8px 12px", color:T.text, fontSize:"clamp(11px,1.1vw,14px)", outline:"none", caretColor:color }}
-                  />
-                  <button
-                    onClick={() => addTodo(sec, inputVal)}
-                    style={{ flexShrink:0, width:34, height:34, borderRadius:10, background:color, border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", touchAction:"manipulation" }}
-                  >
-                    <Plus size={16} color="#fff" />
-                  </button>
+                {weather && <div style={{ fontSize:"clamp(9px,1vw,12px)", color:T.muted, opacity:0.5, marginTop:"clamp(3px,0.5vh,6px)" }}>TAP FOR WEEKLY FORECAST ▸</div>}
+                <div style={{ flex:1, display:"flex", overflowX:"auto", gap:"clamp(6px,1vw,14px)", marginTop:"clamp(6px,1vh,10px)", paddingBottom:4, alignItems:"flex-start" }}>
+                  {(weather?.hourly ?? []).map((h, i) => (
+                    <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3, flexShrink:0, minWidth:"clamp(40px,5vw,58px)" }}>
+                      <div style={{ fontSize:"clamp(10px,1.2vw,14px)", color:T.muted, whiteSpace:"nowrap", fontWeight:500 }}>{h.label}</div>
+                      <div style={{ fontSize:"clamp(22px,3vw,36px)", lineHeight:1 }}>{h.icon}</div>
+                      <div style={{ fontSize:"clamp(12px,1.4vw,16px)", fontWeight:700, color:T.text }}>{h.tempC}°</div>
+                      <div style={{ width:"clamp(26px,3vw,36px)", height:3, borderRadius:2, background:"rgba(96,165,250,0.15)", overflow:"hidden" }}>
+                        <div style={{ width:`${h.precip}%`, height:"100%", background:"#60a5fa", borderRadius:2 }} />
+                      </div>
+                      {h.precip > 5 && <div style={{ fontSize:"clamp(9px,1vw,12px)", color:"#60a5fa", fontWeight:600 }}>{h.precip}%</div>}
+                    </div>
+                  ))}
                 </div>
               </div>
-            );
-          })}
+
+              {/* Calendar */}
+              <div style={{ ...card, padding:"clamp(12px,1.8vh,20px) clamp(12px,1.8vw,22px)", display:"flex", flexDirection:"column" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:"clamp(8px,1.2vh,14px)", flexShrink:0 }}>
+                  <div style={{ fontSize:"clamp(14px,1.7vw,22px)", fontWeight:700, letterSpacing:"clamp(2px,0.3vw,4px)", textTransform:"uppercase", color:T.text }}>{cal.month}</div>
+                  <div style={{ fontSize:"clamp(11px,1.3vw,17px)", color:T.muted }}>{cal.year}</div>
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:"clamp(2px,0.3vw,5px)", flex:1, alignContent:"start" }}>
+                  {["Su","Mo","Tu","We","Th","Fr","Sa"].map(h => (
+                    <div key={h} style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"clamp(20px,2.2vh,28px)", fontSize:"clamp(9px,1vw,13px)", color:T.muted, fontWeight:600 }}>{h}</div>
+                  ))}
+                  {cal.days.map((d, i) => (
+                    <div key={i} style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"clamp(34px,4vh,52px)", fontSize:"clamp(14px,1.7vw,22px)", borderRadius:"clamp(7px,0.8vw,12px)", color: d.num ? (d.isToday ? "#fff" : T.sub) : "transparent", background: d.isToday ? "rgba(124,90,245,0.85)" : "transparent", fontWeight: d.isToday ? 700 : 400, boxShadow: d.isToday ? "0 0 18px rgba(124,90,245,0.6)" : "none" }}>{d.num}</div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT TODO SIDEBAR ~30% — tap card to open popup */}
+          <div style={{ flex:"0 0 30%", display:"flex", flexDirection:"column", gap:10, minWidth:0 }}>
+            {(["trustage","ucla"] as const).map(sec => {
+              const color = sec === "trustage" ? "#60a5fa" : "#a78bfa";
+              const label = sec === "trustage" ? "TruStage" : "UCLA";
+              const emoji = sec === "trustage" ? "🏢" : "🎓";
+              return (
+                <div
+                  key={sec}
+                  onClick={() => setTodoPopup(sec)}
+                  style={{ ...card, flex:1, display:"flex", flexDirection:"column", overflow:"hidden", minHeight:0, cursor:"pointer" }}
+                >
+                  {/* Section header */}
+                  <div style={{ padding:"14px 16px 10px", borderBottom:`1px solid ${T.divider}`, flexShrink:0, display:"flex", alignItems:"center", gap:8 }}>
+                    <span style={{ fontSize:18 }}>{emoji}</span>
+                    <span style={{ fontSize:"clamp(13px,1.4vw,18px)", fontWeight:700, color, letterSpacing:"0.5px" }}>{label}</span>
+                    <span style={{ marginLeft:"auto", fontSize:"clamp(10px,1vw,13px)", color:T.muted }}>{todos[sec].filter(t=>!t.done).length} left</span>
+                    <span style={{ fontSize:12, color:T.muted, opacity:0.45 }}>▶</span>
+                  </div>
+
+                  {/* Preview list — not interactive, tap card to expand */}
+                  <div style={{ flex:1, padding:"8px 14px 10px", display:"flex", flexDirection:"column", gap:6, overflow:"hidden" }}>
+                    {todos[sec].length === 0 && (
+                      <div style={{ fontSize:"clamp(11px,1.1vw,14px)", color:T.muted, textAlign:"center", marginTop:18, opacity:0.5 }}>Tap to add tasks</div>
+                    )}
+                    {todos[sec].slice(0, 7).map(todo => (
+                      <div key={todo.id} style={{ display:"flex", alignItems:"center", gap:8 }}>
+                        <div style={{ flexShrink:0, width:14, height:14, borderRadius:4, border:`1.5px solid ${todo.done ? color : T.border}`, background: todo.done ? color : "transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                          {todo.done && <span style={{ color:"#fff", fontSize:9, lineHeight:1 }}>✓</span>}
+                        </div>
+                        <span style={{ fontSize:"clamp(13px,1.4vw,17px)", color: todo.done ? T.todoDoneTxt : T.text, textDecoration: todo.done ? "line-through" : "none", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                          {todo.text}
+                        </span>
+                      </div>
+                    ))}
+                    {todos[sec].length > 7 && (
+                      <div style={{ fontSize:"clamp(10px,1vw,12px)", color:T.muted, opacity:0.4, marginTop:2 }}>+{todos[sec].length - 7} more…</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
+
+        {/* ── FULL-WIDTH DOCK BANNER ────────────────────────────────────────── */}
+        <div style={{ ...card, margin:"10px 14px 14px", flexShrink:0, height:"clamp(78px,9vh,110px)", display:"flex", alignItems:"center", justifyContent:"center", gap:"clamp(4px,1.8vw,22px)", padding:"0 clamp(14px,2.5vw,32px)" }}>
+          {SHORTCUTS.map(s => (
+            <button
+              key={s.label}
+              onClick={() => openMain(s.url)}
+              style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"clamp(3px,0.5vh,6px)", background:"none", border:"none", color:T.text, padding:"6px clamp(6px,1.2vw,14px)", borderRadius:14, cursor:"pointer", WebkitTapHighlightColor:"transparent", transition:"transform 0.15s ease", touchAction:"manipulation" }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.18) translateY(-5px)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "scale(1) translateY(0)"; }}
+            >
+              <div style={{ width:"clamp(40px,5.2vw,64px)", height:"clamp(40px,5.2vw,64px)", borderRadius:"clamp(10px,1.2vw,16px)", background:T.inputBg, border:`1px solid ${T.border}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"clamp(20px,3vw,38px)", lineHeight:1 }}>
+                {s.emoji}
+              </div>
+              <div style={{ fontSize:"clamp(8px,0.9vw,12px)", color:T.muted, whiteSpace:"nowrap" }}>{s.label}</div>
+            </button>
+          ))}
+        </div>
+
       </div>
     </>
   );
