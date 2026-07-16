@@ -2,7 +2,30 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Volume2, VolumeX, X, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Volume2, VolumeX, WifiOff, X, Plus, Trash2 } from "lucide-react";
+
+// ── Local mute-server helpers ──────────────────────────────────────────────
+const MUTE_TOKEN = process.env.NEXT_PUBLIC_MUTE_API_TOKEN ?? "";
+const MUTE_BASE  = "http://localhost:5051";
+
+async function muteApiFetch(path: string, method = "GET"): Promise<boolean | null> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 3000);
+  try {
+    const r = await fetch(`${MUTE_BASE}${path}`, {
+      method,
+      headers: { "X-API-Token": MUTE_TOKEN },
+      signal: ctrl.signal,
+    });
+    if (!r.ok) return null;
+    const d = await r.json() as Record<string, Record<string, boolean>>;
+    return d.result?.muted ?? d.state?.muted ?? null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const AUTH_KEY      = "personal_authed";
@@ -193,8 +216,9 @@ const iconBtn = (extra?: React.CSSProperties): React.CSSProperties => ({
 export default function IpadDockPage() {
   const router = useRouter();
   const [authed,     setAuthed]     = useState(false);
-  const [muted,      setMuted]      = useState(false);
-  const [showToast,  setShowToast]  = useState(false);
+  const [muted,       setMuted]       = useState(false);
+  const [muteOffline, setMuteOffline] = useState(false);
+  const [showToast,   setShowToast]   = useState(false);
   const [showWeekly, setShowWeekly] = useState(false);
   const [todoPopup,  setTodoPopup]  = useState<"trustage" | "ucla" | null>(null);
 
@@ -219,6 +243,14 @@ export default function IpadDockPage() {
     link.href = "https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;600&display=swap";
     document.head.appendChild(link);
     return () => { if (document.head.contains(link)) document.head.removeChild(link); };
+  }, []);
+
+  // Mute server — sync initial state on load (one-shot, no retry)
+  useEffect(() => {
+    muteApiFetch("/status/mute").then(state => {
+      if (state === null) setMuteOffline(true);
+      else { setMuted(state); setMuteOffline(false); }
+    });
   }, []);
 
   // Clock
@@ -269,13 +301,14 @@ export default function IpadDockPage() {
   }, []);
 
   // Handlers
-  const handleMute = () => {
-    try {
-      const ev = { key: "AudioVolumeMute", code: "AudioVolumeMute", keyCode: 173, bubbles: true, cancelable: true };
-      document.dispatchEvent(new KeyboardEvent("keydown", ev));
-      document.dispatchEvent(new KeyboardEvent("keyup",  ev));
-    } catch {}
-    setMuted(m => !m);
+  const handleMute = async () => {
+    const newState = await muteApiFetch("/run/mute", "POST");
+    if (newState === null) {
+      setMuteOffline(true);
+    } else {
+      setMuteOffline(false);
+      setMuted(newState);
+    }
     setShowToast(true);
     setTimeout(() => setShowToast(false), 2500);
   };
@@ -435,7 +468,7 @@ export default function IpadDockPage() {
       {/* ── Mute toast ────────────────────────────────────────────────────── */}
       {showToast && (
         <div style={{ position:"fixed", bottom:30, left:"50%", transform:"translateX(-50%)", zIndex:600, background:"rgba(30,20,60,0.92)", color:"#fff", padding:"10px 20px", borderRadius:12, fontSize:13, border:"1px solid rgba(255,255,255,0.12)", animation:"toast-slide 2.5s ease forwards", whiteSpace:"nowrap" }}>
-          {muted ? "🔇 Muted — also press Fn+Mute key for system audio" : "🔊 Unmuted"}
+          {muteOffline ? "🔌 Mute server offline — is Flask running on :5051?" : muted ? "🔇 Muted" : "🔊 Unmuted"}
         </div>
       )}
 
@@ -473,10 +506,27 @@ export default function IpadDockPage() {
 
               <button
                 onClick={handleMute}
-                title={muted ? "Unmute" : "Mute"}
-                style={{ ...iconBtn({ width:58, height:58, borderRadius:16, background: muted ? "rgba(248,113,113,0.18)" : T.iconBtn, border: muted ? "1px solid rgba(248,113,113,0.45)" : `1px solid ${T.iconBtnBrd}` }), animation: muted ? "mute-ring 2s ease-in-out infinite" : "none" }}
+                title={muteOffline ? "Mute server offline" : muted ? "Unmute" : "Mute"}
+                style={{
+                  ...iconBtn({
+                    width:58, height:58, borderRadius:16,
+                    background: muteOffline ? "rgba(255,255,255,0.03)"
+                              : muted       ? "rgba(248,113,113,0.18)"
+                              :               T.iconBtn,
+                    border:     muteOffline ? "1px solid rgba(255,255,255,0.06)"
+                              : muted       ? "1px solid rgba(248,113,113,0.45)"
+                              :               `1px solid ${T.iconBtnBrd}`,
+                    opacity: muteOffline ? 0.45 : 1,
+                  }),
+                  animation: (!muteOffline && muted) ? "mute-ring 2s ease-in-out infinite" : "none",
+                }}
               >
-                {muted ? <VolumeX size={24} color="#f87171" /> : <Volume2 size={24} color={T.iconColor} />}
+                {muteOffline
+                  ? <WifiOff size={22} color="rgba(255,255,255,0.3)" />
+                  : muted
+                    ? <VolumeX size={24} color="#f87171" />
+                    : <Volume2 size={24} color={T.iconColor} />
+                }
               </button>
             </div>
 
