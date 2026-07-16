@@ -455,10 +455,10 @@ export default function IpadDockPage() {
       <div style={{ display:"flex", flexDirection:"column", width:"100vw", height:"100vh", overflow:"hidden", background:T.bg, color:T.text, fontFamily:"'Inter',-apple-system,sans-serif", userSelect:"none", WebkitUserSelect:"none", position:"relative", zIndex:1 }}>
 
         {/* ── TOP CONTENT (flex:1) ─────────────────────────────────────────── */}
-        <div style={{ flex:1, display:"flex", gap:10, padding:"14px 14px 0 14px", minHeight:0 }}>
+        <div style={{ flex:1, display:"flex", gap:10, padding:"14px 14px 0 14px", minHeight:0, overflow:"hidden" }}>
 
           {/* LEFT MAIN ~68% */}
-          <div style={{ flex:"0 0 68%", display:"flex", flexDirection:"column", gap:10, minWidth:0 }}>
+          <div style={{ flex:"0 0 68%", display:"flex", flexDirection:"column", gap:10, minWidth:0, minHeight:0, overflow:"hidden" }}>
 
             {/* Top bar: Hub | Date | Mute */}
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
@@ -570,7 +570,7 @@ export default function IpadDockPage() {
           </div>
 
           {/* RIGHT TODO SIDEBAR ~30% — tap card to open popup */}
-          <div style={{ flex:"0 0 30%", display:"flex", flexDirection:"column", gap:10, minWidth:0 }}>
+          <div style={{ flex:"0 0 30%", display:"flex", flexDirection:"column", gap:10, minWidth:0, minHeight:0, overflow:"hidden" }}>
             {(["trustage","ucla"] as const).map(sec => {
               const color = sec === "trustage" ? "#60a5fa" : "#a78bfa";
               const label = sec === "trustage" ? "TruStage" : "UCLA";
