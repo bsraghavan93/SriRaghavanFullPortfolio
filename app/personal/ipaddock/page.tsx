@@ -2,8 +2,39 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Volume2, VolumeX, WifiOff, X, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Volume2, VolumeX, WifiOff, X, Plus, Trash2, Pencil, Check } from "lucide-react";
+import { Responsive, WidthProvider, type Layout as GridLayoutItem } from "react-grid-layout";
+import "react-grid-layout/css/styles.css";
+import "react-resizable/css/styles.css";
 import { useNotes } from "@/hooks/useNotes";
+
+const ResponsiveGridLayout = WidthProvider(Responsive);
+const GRID_STORAGE_KEY = "ipaddock_grid_layout_v1";
+
+type GridLayout = GridLayoutItem[];
+
+function defaultGridLayout(sectionIds: string[]): GridLayout {
+  const base: GridLayout = [
+    { i: "clocks",    x: 0, y: 0,  w: 4, h: 11, minW: 2, minH: 5 },
+    { i: "clock-est", x: 4, y: 0,  w: 5, h: 11, minW: 3, minH: 5 },
+    { i: "weather",   x: 0, y: 11, w: 5, h: 10, minW: 3, minH: 5 },
+    { i: "calendar",  x: 5, y: 11, w: 4, h: 10, minW: 3, minH: 5 },
+  ];
+  const todoIds = sectionIds.length ? sectionIds : ["empty"];
+  const todos: GridLayout = todoIds.map((id, i) => ({
+    i: `todo-${id}`, x: 9, y: i * 10, w: 3, h: 10, minW: 2, minH: 4,
+  }));
+  return [...base, ...todos];
+}
+
+function mergeGridLayout(saved: GridLayout | null, wanted: GridLayout): GridLayout {
+  if (!saved) return wanted;
+  const savedMap = new Map(saved.map((l) => [l.i, l]));
+  return wanted.map((w) => {
+    const s = savedMap.get(w.i);
+    return s ? { ...w, x: s.x, y: s.y, w: s.w, h: s.h } : w;
+  });
+}
 
 // ── Local mute-server helpers ──────────────────────────────────────────────
 const MUTE_TOKEN = process.env.NEXT_PUBLIC_MUTE_API_TOKEN ?? "";
@@ -216,6 +247,8 @@ export default function IpadDockPage() {
   const [showToast,   setShowToast]   = useState(false);
   const [showWeekly, setShowWeekly] = useState(false);
   const [todoPopup,  setTodoPopup]  = useState<string | null>(null);
+  const [editMode,   setEditMode]   = useState(false);
+  const [gridLayout, setGridLayout] = useState<GridLayout>(() => defaultGridLayout([]));
 
   const [zoneTimes, setZoneTimes] = useState<ZoneTime[]>(ZONES.map(() => ({ hhmm: "0:00", ss: "00", ampm: "AM" })));
   const [dateInfo,  setDateInfo]  = useState({ day: "", date: "" });
@@ -269,6 +302,24 @@ export default function IpadDockPage() {
     if (localStorage.getItem(AUTH_KEY) !== "true") router.replace("/personal");
     else setAuthed(true);
   }, [router]);
+
+  // Grid layout — load saved positions/sizes and merge with the current set of dock sections
+  const dockSectionKey = dockSections.map((s) => s.id).join(",");
+  useEffect(() => {
+    const wanted = defaultGridLayout(dockSections.map((s) => s.id));
+    let saved: GridLayout | null = null;
+    try {
+      const raw = localStorage.getItem(GRID_STORAGE_KEY);
+      if (raw) saved = JSON.parse(raw);
+    } catch {}
+    setGridLayout(mergeGridLayout(saved, wanted));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dockSectionKey]);
+
+  const handleGridLayoutChange = useCallback((l: GridLayout) => {
+    setGridLayout(l);
+    try { localStorage.setItem(GRID_STORAGE_KEY, JSON.stringify(l)); } catch {}
+  }, []);
 
   // Font
   useEffect(() => {
@@ -494,21 +545,33 @@ export default function IpadDockPage() {
       <div style={{ display:"flex", flexDirection:"column", width:"100vw", height:"100vh", overflow:"hidden", background:T.bg, color:T.text, fontFamily:"'Inter',-apple-system,sans-serif", userSelect:"none", WebkitUserSelect:"none", position:"relative", zIndex:1 }}>
 
         {/* ── TOP CONTENT (flex:1) ─────────────────────────────────────────── */}
-        <div style={{ flex:1, display:"flex", gap:10, padding:"14px 14px 0 14px", minHeight:0, overflow:"hidden" }}>
+        <div style={{ flex:1, display:"flex", flexDirection:"column", gap:8, padding:"14px 14px 0 14px", minHeight:0, overflow:"hidden" }}>
 
-          {/* LEFT MAIN ~68% */}
-          <div style={{ flex:"0 0 68%", display:"flex", flexDirection:"column", gap:10, minWidth:0, minHeight:0, overflow:"hidden" }}>
+          {/* Top bar: Hub | Date | Edit | Mute */}
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
+            <button onClick={() => router.push("/personal")} style={{ ...iconBtn({ padding:"7px 14px", borderRadius:11, fontSize:12 }), display:"flex", alignItems:"center", gap:6 }}>
+              <ArrowLeft size={12} color={T.iconColor} />
+              <span style={{ color:T.iconColor }}>Hub</span>
+            </button>
 
-            {/* Top bar: Hub | Date | Mute */}
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
-              <button onClick={() => router.push("/personal")} style={{ ...iconBtn({ padding:"7px 14px", borderRadius:11, fontSize:12 }), display:"flex", alignItems:"center", gap:6 }}>
-                <ArrowLeft size={12} color={T.iconColor} />
-                <span style={{ color:T.iconColor }}>Hub</span>
+            <div style={{ fontSize:"clamp(11px,1.1vw,15px)", color:T.muted, letterSpacing:"1.5px", textTransform:"uppercase" }}>
+              {editMode ? "Drag to move · drag corner to resize" : `${dateInfo.day} · ${dateInfo.date}`}
+            </div>
+
+            <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+              <button
+                onClick={() => setEditMode(m => !m)}
+                title={editMode ? "Done editing layout" : "Edit layout"}
+                style={{
+                  ...iconBtn({
+                    width:48, height:48, borderRadius:14,
+                    background: editMode ? "rgba(124,90,245,0.28)" : T.iconBtn,
+                    border:     editMode ? "1px solid rgba(124,90,245,0.6)" : `1px solid ${T.iconBtnBrd}`,
+                  }),
+                }}
+              >
+                {editMode ? <Check size={20} color="#a78bfa" /> : <Pencil size={18} color={T.iconColor} />}
               </button>
-
-              <div style={{ fontSize:"clamp(11px,1.1vw,15px)", color:T.muted, letterSpacing:"1.5px", textTransform:"uppercase" }}>
-                {dateInfo.day} · {dateInfo.date}
-              </div>
 
               <button
                 onClick={handleMute}
@@ -535,12 +598,25 @@ export default function IpadDockPage() {
                 }
               </button>
             </div>
+          </div>
 
-            {/* CLOCKS: PST+CST stacked | EST big */}
-            <div style={{ flex:"1.7", display:"grid", gridTemplateColumns:"0.6fr 1fr", gap:10, minHeight:0 }}>
-
+          {/* Dynamic, draggable/resizable widget grid */}
+          <div style={{ flex:1, minHeight:0, overflowY:"auto", overflowX:"hidden" }}>
+            <ResponsiveGridLayout
+              className="layout"
+              layouts={{ lg: gridLayout }}
+              breakpoints={{ lg: 0 }}
+              cols={{ lg: 12 }}
+              rowHeight={20}
+              margin={[10, 10]}
+              containerPadding={[0, 0]}
+              isDraggable={editMode}
+              isResizable={editMode}
+              compactType="vertical"
+              onLayoutChange={handleGridLayoutChange}
+            >
               {/* PST + CST */}
-              <div style={{ ...card, display:"flex", flexDirection:"column", overflow:"hidden", position:"relative" }}>
+              <div key="clocks" style={{ ...card, display:"flex", flexDirection:"column", overflow:"hidden", position:"relative", outline: editMode ? "2px dashed rgba(124,90,245,0.5)" : "none", cursor: editMode ? "move" : "default" }}>
                 {[0,1].map((i) => (
                   <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center", textAlign:"center", padding:"14px 16px", borderBottom: i === 0 ? `1px solid ${T.border}` : "none", position:"relative", overflow:"hidden" }}>
                     <div style={{ position:"absolute", left:0, right:0, height:1, background:`linear-gradient(90deg,transparent,${ZONES[i].color}55,transparent)`, animation:`scan-line ${6+i}s linear infinite ${i*2}s`, pointerEvents:"none" }} />
@@ -554,7 +630,7 @@ export default function IpadDockPage() {
               </div>
 
               {/* EST */}
-              <div style={{ ...card, display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center", textAlign:"center", position:"relative", overflow:"hidden", boxShadow:`0 0 80px ${ZONES[2].glow}22, inset 0 1px 0 ${ZONES[2].color}15` }}>
+              <div key="clock-est" style={{ ...card, display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center", textAlign:"center", position:"relative", overflow:"hidden", boxShadow:`0 0 80px ${ZONES[2].glow}22, inset 0 1px 0 ${ZONES[2].color}15`, outline: editMode ? "2px dashed rgba(124,90,245,0.5)" : "none", cursor: editMode ? "move" : "default" }}>
                 <div style={{ position:"absolute", left:0, right:0, height:1, background:`linear-gradient(90deg,transparent,${ZONES[2].color}55,transparent)`, animation:"scan-line 8s linear infinite 4s", pointerEvents:"none" }} />
                 <div style={{ position:"absolute", top:14, right:18, width:9, height:9, borderRadius:"50%", background:ZONES[2].color, boxShadow:`0 0 16px ${ZONES[2].color}`, animation:"twinkle 2s ease-in-out infinite 1.4s" }} />
                 <div style={{ fontSize:"clamp(15px,2vw,28px)", fontWeight:800, color:ZONES[2].color, letterSpacing:"0.35em", textTransform:"uppercase", marginBottom:"clamp(10px,2vh,22px)", textShadow:`0 0 28px ${ZONES[2].color}` }}>EST</div>
@@ -565,13 +641,9 @@ export default function IpadDockPage() {
                 <div style={{ fontSize:"clamp(14px,1.8vw,26px)", fontWeight:700, color:ZONES[2].color, letterSpacing:"0.2em", marginTop:"clamp(6px,1vh,14px)", opacity:0.85 }}>{zoneTimes[2].ampm}</div>
                 <div style={{ fontSize:"clamp(10px,1.2vw,16px)", color:T.muted, letterSpacing:"3px", textTransform:"uppercase", marginTop:"clamp(10px,1.8vh,20px)" }}>New York</div>
               </div>
-            </div>
-
-            {/* MIDDLE: Weather | Calendar */}
-            <div style={{ flex:"1", display:"grid", gridTemplateColumns:"0.85fr 1.15fr", gap:10, minHeight:0 }}>
 
               {/* Weather */}
-              <div onClick={() => weather && setShowWeekly(true)} style={{ ...card, padding:"clamp(10px,1.4vh,16px) clamp(10px,1.4vw,16px)", display:"flex", flexDirection:"column", cursor: weather ? "pointer" : "default", overflow:"hidden" }}>
+              <div key="weather" onClick={editMode ? undefined : () => weather && setShowWeekly(true)} style={{ ...card, padding:"clamp(10px,1.4vh,16px) clamp(10px,1.4vw,16px)", display:"flex", flexDirection:"column", cursor: editMode ? "move" : (weather ? "pointer" : "default"), overflow:"hidden", outline: editMode ? "2px dashed rgba(124,90,245,0.5)" : "none" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
                   <div style={{ fontSize:"clamp(38px,5vw,62px)", lineHeight:1, flexShrink:0 }}>{weather?.icon ?? "🌤"}</div>
                   <div style={{ minWidth:0 }}>
@@ -608,7 +680,7 @@ export default function IpadDockPage() {
               </div>
 
               {/* Calendar */}
-              <div style={{ ...card, padding:"clamp(12px,1.8vh,20px) clamp(12px,1.8vw,22px)", display:"flex", flexDirection:"column" }}>
+              <div key="calendar" style={{ ...card, padding:"clamp(12px,1.8vh,20px) clamp(12px,1.8vw,22px)", display:"flex", flexDirection:"column", outline: editMode ? "2px dashed rgba(124,90,245,0.5)" : "none", cursor: editMode ? "move" : "default" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:"clamp(8px,1.2vh,14px)", flexShrink:0 }}>
                   <div style={{ fontSize:"clamp(14px,1.7vw,22px)", fontWeight:700, letterSpacing:"clamp(2px,0.3vw,4px)", textTransform:"uppercase", color:T.text }}>{cal.month}</div>
                   <div style={{ fontSize:"clamp(11px,1.3vw,17px)", color:T.muted }}>{cal.year}</div>
@@ -622,59 +694,60 @@ export default function IpadDockPage() {
                   ))}
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* RIGHT TODO SIDEBAR ~30% — tap card to open popup */}
-          <div style={{ flex:"0 0 30%", display:"flex", flexDirection:"column", gap:10, minWidth:0, minHeight:0, overflow:"hidden" }}>
-            {dockSections.length === 0 ? (
-              <div style={{ ...card, flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, padding:16 }}>
-                <span style={{ fontSize:28 }}>📝</span>
-                <p style={{ fontSize:12, color:T.muted, textAlign:"center", lineHeight:1.5 }}>
-                  Create sections in Quick Notes to see them here
-                </p>
-                <a href="/personal/notes" style={{ fontSize:11, color:"#7c5af5", textDecoration:"none" }}>Open Quick Notes →</a>
-              </div>
-            ) : dockSections.map(section => {
-              const items = getSectionItems(section.id);
-              const color = section.color;
-              const emoji = section.icon === "GraduationCap" ? "🎓" : section.icon === "Building" ? "🏢" : section.icon === "Star" ? "⭐" : "📋";
-              return (
-                <div
-                  key={section.id}
-                  onClick={() => setTodoPopup(section.id)}
-                  style={{ ...card, flex:1, display:"flex", flexDirection:"column", overflow:"hidden", minHeight:0, cursor:"pointer" }}
-                >
-                  {/* Section header */}
-                  <div style={{ padding:"14px 16px 10px", borderBottom:`1px solid ${T.divider}`, flexShrink:0, display:"flex", alignItems:"center", gap:8 }}>
-                    <span style={{ fontSize:18 }}>{emoji}</span>
-                    <span style={{ fontSize:"clamp(13px,1.4vw,18px)", fontWeight:700, color, letterSpacing:"0.5px" }}>{section.title}</span>
-                    <span style={{ marginLeft:"auto", fontSize:"clamp(10px,1vw,13px)", color:T.muted }}>{items.filter(t=>!t.completed).length} left</span>
-                    <span style={{ fontSize:12, color:T.muted, opacity:0.45 }}>▶</span>
+              {/* Todo sections — tap card to open popup (disabled while editing layout) */}
+              {(dockSections.length === 0
+                ? [(
+                  <div key="todo-empty" style={{ ...card, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, padding:16, outline: editMode ? "2px dashed rgba(124,90,245,0.5)" : "none", cursor: editMode ? "move" : "default" }}>
+                    <span style={{ fontSize:28 }}>📝</span>
+                    <p style={{ fontSize:12, color:T.muted, textAlign:"center", lineHeight:1.5 }}>
+                      Create sections in Quick Notes to see them here
+                    </p>
+                    <a href="/personal/notes" style={{ fontSize:11, color:"#7c5af5", textDecoration:"none" }}>Open Quick Notes →</a>
                   </div>
-
-                  {/* Preview list */}
-                  <div style={{ flex:1, padding:"8px 14px 10px", display:"flex", flexDirection:"column", gap:6, overflow:"hidden" }}>
-                    {items.length === 0 && (
-                      <div style={{ fontSize:"clamp(11px,1.1vw,14px)", color:T.muted, textAlign:"center", marginTop:18, opacity:0.5 }}>Tap to add tasks</div>
-                    )}
-                    {items.slice(0, 7).map(item => (
-                      <div key={item.id} style={{ display:"flex", alignItems:"center", gap:8 }}>
-                        <div style={{ flexShrink:0, width:14, height:14, borderRadius:4, border:`1.5px solid ${item.completed ? color : T.border}`, background: item.completed ? color : "transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                          {item.completed && <span style={{ color:"#fff", fontSize:9, lineHeight:1 }}>✓</span>}
-                        </div>
-                        <span style={{ fontSize:"clamp(13px,1.4vw,17px)", color: item.completed ? T.todoDoneTxt : T.text, textDecoration: item.completed ? "line-through" : "none", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                          {item.text}
-                        </span>
+                )]
+                : dockSections.map(section => {
+                  const items = getSectionItems(section.id);
+                  const color = section.color;
+                  const emoji = section.icon === "GraduationCap" ? "🎓" : section.icon === "Building" ? "🏢" : section.icon === "Star" ? "⭐" : "📋";
+                  return (
+                    <div
+                      key={`todo-${section.id}`}
+                      onClick={editMode ? undefined : () => setTodoPopup(section.id)}
+                      style={{ ...card, display:"flex", flexDirection:"column", overflow:"hidden", cursor: editMode ? "move" : "pointer", outline: editMode ? "2px dashed rgba(124,90,245,0.5)" : "none" }}
+                    >
+                      {/* Section header */}
+                      <div style={{ padding:"14px 16px 10px", borderBottom:`1px solid ${T.divider}`, flexShrink:0, display:"flex", alignItems:"center", gap:8 }}>
+                        <span style={{ fontSize:18 }}>{emoji}</span>
+                        <span style={{ fontSize:"clamp(13px,1.4vw,18px)", fontWeight:700, color, letterSpacing:"0.5px" }}>{section.title}</span>
+                        <span style={{ marginLeft:"auto", fontSize:"clamp(10px,1vw,13px)", color:T.muted }}>{items.filter(t=>!t.completed).length} left</span>
+                        <span style={{ fontSize:12, color:T.muted, opacity:0.45 }}>▶</span>
                       </div>
-                    ))}
-                    {items.length > 7 && (
-                      <div style={{ fontSize:"clamp(10px,1vw,12px)", color:T.muted, opacity:0.4, marginTop:2 }}>+{items.length - 7} more…</div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+
+                      {/* Preview list */}
+                      <div style={{ flex:1, padding:"8px 14px 10px", display:"flex", flexDirection:"column", gap:6, overflow:"hidden" }}>
+                        {items.length === 0 && (
+                          <div style={{ fontSize:"clamp(11px,1.1vw,14px)", color:T.muted, textAlign:"center", marginTop:18, opacity:0.5 }}>Tap to add tasks</div>
+                        )}
+                        {items.slice(0, 7).map(item => (
+                          <div key={item.id} style={{ display:"flex", alignItems:"center", gap:8 }}>
+                            <div style={{ flexShrink:0, width:14, height:14, borderRadius:4, border:`1.5px solid ${item.completed ? color : T.border}`, background: item.completed ? color : "transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                              {item.completed && <span style={{ color:"#fff", fontSize:9, lineHeight:1 }}>✓</span>}
+                            </div>
+                            <span style={{ fontSize:"clamp(13px,1.4vw,17px)", color: item.completed ? T.todoDoneTxt : T.text, textDecoration: item.completed ? "line-through" : "none", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                              {item.text}
+                            </span>
+                          </div>
+                        ))}
+                        {items.length > 7 && (
+                          <div style={{ fontSize:"clamp(10px,1vw,12px)", color:T.muted, opacity:0.4, marginTop:2 }}>+{items.length - 7} more…</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </ResponsiveGridLayout>
           </div>
         </div>
 
