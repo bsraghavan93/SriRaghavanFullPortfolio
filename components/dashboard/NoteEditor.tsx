@@ -7,6 +7,7 @@ import React, {
   useRef,
   useMemo,
 } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence, Reorder, useDragControls } from "framer-motion";
 import {
   X,
@@ -16,27 +17,33 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
-  Tag as TagIcon,
   AlignLeft,
   CheckSquare,
-  Calendar,
+  Trash2,
 } from "lucide-react";
 import type { Note, ChecklistItem, Priority, NoteSection } from "@/lib/notes-types";
 import { SECTION_COLORS, PRIORITY_CONFIG, SECTION_ICONS } from "@/lib/notes-types";
 
+// Extended palette — all SECTION_COLORS + more curated options
+const ALL_COLORS = [
+  ...SECTION_COLORS,
+  "#ec4899", "#8b5cf6", "#06b6d4", "#10b981",
+  "#dc2626", "#7c3aed", "#0891b2", "#059669",
+  "#d97706", "#475569",
+];
+
 const T = {
-  card: "rgba(10,6,28,0.97)",
+  card: "rgba(10,6,28,0.98)",
   border: "rgba(255,255,255,0.08)",
   text: "#ffffff",
-  muted: "rgba(255,255,255,0.35)",
+  muted: "rgba(255,255,255,0.38)",
   sub: "rgba(255,255,255,0.60)",
   inputBg: "rgba(255,255,255,0.07)",
   divider: "rgba(255,255,255,0.07)",
 };
 
 // ── Checklist Item Row ─────────────────────────────────────────────────────
-// Two-line layout: line 1 = checkbox + text + delete
-//                  line 2 = date + priority (indented to align with text)
+// Clean single-row: drag | checkbox | text | priority emoji (tap to cycle) | delete
 function ChecklistRow({
   item,
   noteId,
@@ -62,235 +69,139 @@ function ChecklistRow({
     setEditing(false);
   };
 
-  const priorityColor = PRIORITY_CONFIG[item.priority].color;
-  const isOverdue =
-    item.due_date &&
-    !item.completed &&
-    new Date(item.due_date) < new Date(new Date().toDateString());
+  const cyclePriority = () => {
+    const order: Priority[] = ["low", "normal", "high", "urgent"];
+    const next = order[(order.indexOf(item.priority) + 1) % order.length];
+    onUpdate(item.id, noteId, { priority: next });
+  };
 
-  const CHECKBOX_W = 26;
-  const HANDLE_W = isMobile ? 0 : 22; // hide drag handle on mobile
-  const INDENT = HANDLE_W + (isMobile ? 8 : 10) + CHECKBOX_W + 10; // align row-2 with text
+  const pc = PRIORITY_CONFIG[item.priority];
 
   return (
     <Reorder.Item value={item} dragListener={false} dragControls={controls} style={{ listStyle: "none" }}>
-      <div style={{ padding: "10px 0", borderBottom: `1px solid ${T.divider}` }}>
-
-        {/* ── Row 1: drag | checkbox | text | delete ── */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {/* Drag handle — desktop only */}
-          {!isMobile && (
-            <div
-              onPointerDown={(e) => controls.start(e)}
-              style={{ cursor: "grab", color: "rgba(255,255,255,0.12)", flexShrink: 0, touchAction: "none", lineHeight: 0, width: HANDLE_W }}
-            >
-              <GripVertical size={14} />
-            </div>
-          )}
-
-          {/* Checkbox */}
-          <button
-            onClick={() => onUpdate(item.id, noteId, { completed: !item.completed })}
-            style={{
-              flexShrink: 0,
-              width: CHECKBOX_W,
-              height: CHECKBOX_W,
-              borderRadius: 7,
-              border: `2px solid ${item.completed ? priorityColor : "rgba(255,255,255,0.18)"}`,
-              background: item.completed ? priorityColor : "transparent",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              touchAction: "manipulation",
-              transition: "all 0.15s",
-            }}
-          >
-            {item.completed && <Check size={12} color="#fff" strokeWidth={3} />}
-          </button>
-
-          {/* Text */}
-          {editing ? (
-            <form
-              style={{ flex: 1 }}
-              onSubmit={(e) => { e.preventDefault(); save(); }}
-            >
-              <input
-                autoFocus
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onBlur={save}
-                enterKeyHint="done"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") { e.preventDefault(); save(); }
-                  if (e.key === "Escape") { setText(item.text); setEditing(false); }
-                }}
-                style={{
-                  width: "100%",
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  borderRadius: 8,
-                  padding: "5px 10px",
-                  color: "#fff",
-                  fontSize: 15,
-                  outline: "none",
-                }}
-              />
-            </form>
-          ) : (
-            <span
-              onClick={() => !item.completed && setEditing(true)}
-              style={{
-                flex: 1,
-                fontSize: 15,
-                lineHeight: 1.45,
-                color: item.completed ? "rgba(255,255,255,0.22)" : T.text,
-                textDecoration: item.completed ? "line-through" : "none",
-                cursor: item.completed ? "default" : "text",
-                wordBreak: "break-word",
-                minWidth: 0,
-              }}
-            >
-              {item.text}
-            </span>
-          )}
-
-          {/* Delete */}
-          <button
-            onClick={() => onDelete(item.id, noteId)}
-            style={{
-              flexShrink: 0,
-              background: "none",
-              border: "none",
-              color: "rgba(255,255,255,0.18)",
-              cursor: "pointer",
-              padding: "4px 6px",
-              touchAction: "manipulation",
-              lineHeight: 0,
-              borderRadius: 6,
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "#ef4444")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.18)")}
-          >
-            <X size={14} />
-          </button>
-        </div>
-
-        {/* ── Row 2: date + priority (indented, only if not completed) ── */}
-        {!item.completed && (
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 0", borderBottom: `1px solid ${T.divider}` }}>
+        {/* Drag handle — desktop only */}
+        {!isMobile && (
           <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              marginTop: 6,
-              paddingLeft: INDENT,
-            }}
+            onPointerDown={(e) => controls.start(e)}
+            style={{ cursor: "grab", color: "rgba(255,255,255,0.12)", flexShrink: 0, touchAction: "none", lineHeight: 0 }}
           >
-            {/* Due date */}
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <Calendar
-                size={11}
-                color={isOverdue ? "#ef4444" : item.due_date ? "#60a5fa" : "rgba(255,255,255,0.2)"}
-              />
-              <input
-                type="date"
-                value={item.due_date ?? ""}
-                onChange={(e) =>
-                  onUpdate(item.id, noteId, { due_date: e.target.value || null })
-                }
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  padding: 0,
-                  fontSize: 12,
-                  color: isOverdue
-                    ? "#ef4444"
-                    : item.due_date
-                    ? "#60a5fa"
-                    : "rgba(255,255,255,0.2)",
-                  cursor: "pointer",
-                  outline: "none",
-                  colorScheme: "dark",
-                  maxWidth: 110,
-                }}
-              />
-            </div>
-
-            {/* Priority */}
-            <select
-              value={item.priority}
-              onChange={(e) =>
-                onUpdate(item.id, noteId, { priority: e.target.value as Priority })
-              }
-              style={{
-                background: "rgba(255,255,255,0.05)",
-                border: "none",
-                borderRadius: 6,
-                padding: "3px 8px",
-                fontSize: 12,
-                color: priorityColor,
-                cursor: "pointer",
-                outline: "none",
-              }}
-            >
-              <option value="urgent">🔴 Urgent</option>
-              <option value="high">🟠 High</option>
-              <option value="normal">🔵 Normal</option>
-              <option value="low">⚪ Low</option>
-            </select>
+            <GripVertical size={14} />
           </div>
         )}
+
+        {/* Checkbox */}
+        <button
+          onClick={() => onUpdate(item.id, noteId, { completed: !item.completed })}
+          style={{
+            flexShrink: 0, width: 24, height: 24, borderRadius: 7,
+            border: `2px solid ${item.completed ? pc.color : "rgba(255,255,255,0.18)"}`,
+            background: item.completed ? pc.color : "transparent",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer", touchAction: "manipulation", transition: "all 0.15s",
+          }}
+        >
+          {item.completed && <Check size={11} color="#fff" strokeWidth={3} />}
+        </button>
+
+        {/* Text */}
+        {editing ? (
+          <form style={{ flex: 1 }} onSubmit={(e) => { e.preventDefault(); save(); }}>
+            <input
+              autoFocus
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onBlur={save}
+              enterKeyHint="done"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); save(); }
+                if (e.key === "Escape") { setText(item.text); setEditing(false); }
+              }}
+              style={{
+                width: "100%", background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8,
+                padding: "4px 8px", color: "#fff", fontSize: 15, outline: "none",
+              }}
+            />
+          </form>
+        ) : (
+          <span
+            onClick={() => !item.completed && setEditing(true)}
+            style={{
+              flex: 1, fontSize: 15, lineHeight: 1.45,
+              color: item.completed ? "rgba(255,255,255,0.22)" : T.text,
+              textDecoration: item.completed ? "line-through" : "none",
+              cursor: item.completed ? "default" : "text",
+              wordBreak: "break-word", minWidth: 0,
+            }}
+          >
+            {item.text}
+          </span>
+        )}
+
+        {/* Priority emoji — tap to cycle through low → normal → high → urgent */}
+        {!item.completed && (
+          <button
+            onClick={cyclePriority}
+            title={`Priority: ${pc.label} — tap to change`}
+            style={{
+              flexShrink: 0, background: "none", border: "none",
+              cursor: "pointer", fontSize: 14, padding: "2px",
+              touchAction: "manipulation", lineHeight: 1,
+              opacity: item.priority === "low" ? 0.4 : 1,
+            }}
+          >
+            {pc.emoji}
+          </button>
+        )}
+
+        {/* Delete */}
+        <button
+          onClick={() => onDelete(item.id, noteId)}
+          style={{
+            flexShrink: 0, background: "none", border: "none",
+            color: "rgba(255,255,255,0.15)", cursor: "pointer",
+            padding: "4px", touchAction: "manipulation", lineHeight: 0, borderRadius: 6,
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "#ef4444")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.15)")}
+        >
+          <X size={13} />
+        </button>
       </div>
     </Reorder.Item>
   );
 }
 
 // ── Add Item Input ─────────────────────────────────────────────────────────
-// Wrapped in <form> so the mobile keyboard "Done"/"Go" key triggers submit.
-// enterKeyHint="done" makes iOS/Android show "Done" instead of "Next".
 function AddItemInput({
   noteId,
   onAdd,
-  autoFocusOnMount,
 }: {
   noteId: string;
   onAdd: (noteId: string, text: string, priority: Priority) => Promise<unknown>;
-  autoFocusOnMount?: boolean;
 }) {
   const [text, setText] = useState("");
-  const [priority, setPriority] = useState<Priority>("normal");
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (autoFocusOnMount) inputRef.current?.focus();
-  }, [autoFocusOnMount]);
 
   const submit = useCallback(async () => {
     if (!text.trim()) return;
-    await onAdd(noteId, text.trim(), priority);
+    await onAdd(noteId, text.trim(), "normal");
     setText("");
-    // Small delay so state resets before refocus
     requestAnimationFrame(() => inputRef.current?.focus());
-  }, [text, priority, noteId, onAdd]);
+  }, [text, noteId, onAdd]);
 
   return (
     <form
       onSubmit={(e) => { e.preventDefault(); submit(); }}
       style={{ display: "flex", alignItems: "center", gap: 10 }}
     >
-      {/* Ghost checkbox */}
       <div
         style={{
-          width: 26,
-          height: 26,
-          borderRadius: 7,
-          border: "2px dashed rgba(255,255,255,0.15)",
-          flexShrink: 0,
+          width: 24, height: 24, borderRadius: 7,
+          border: "2px dashed rgba(255,255,255,0.13)", flexShrink: 0,
         }}
       />
-
-      {/* Text input */}
       <input
         ref={inputRef}
         value={text}
@@ -298,61 +209,91 @@ function AddItemInput({
         placeholder="Add item…"
         enterKeyHint="done"
         style={{
-          flex: 1,
-          minWidth: 0,
-          background: "transparent",
-          border: "none",
-          color: T.text,
-          fontSize: 15,
-          outline: "none",
-          caretColor: "#7c5af5",
+          flex: 1, minWidth: 0, background: "transparent",
+          border: "none", color: T.text, fontSize: 15,
+          outline: "none", caretColor: "#7c5af5",
         }}
       />
-
-      {/* Priority */}
-      <select
-        value={priority}
-        onChange={(e) => setPriority(e.target.value as Priority)}
-        style={{
-          flexShrink: 0,
-          background: "rgba(255,255,255,0.05)",
-          border: "none",
-          borderRadius: 6,
-          padding: "4px 8px",
-          fontSize: 12,
-          color: PRIORITY_CONFIG[priority].color,
-          cursor: "pointer",
-          outline: "none",
-        }}
-      >
-        <option value="urgent">🔴 Urgent</option>
-        <option value="high">🟠 High</option>
-        <option value="normal">🔵 Normal</option>
-        <option value="low">⚪ Low</option>
-      </select>
-
-      {/* Submit button */}
       <button
         type="submit"
         disabled={!text.trim()}
         style={{
-          flexShrink: 0,
-          width: 34,
-          height: 34,
-          borderRadius: 9,
+          flexShrink: 0, width: 32, height: 32, borderRadius: 8,
           background: text.trim() ? "#7c5af5" : "rgba(255,255,255,0.05)",
-          border: "none",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          border: "none", display: "flex", alignItems: "center", justifyContent: "center",
           cursor: text.trim() ? "pointer" : "default",
-          transition: "background 0.15s",
-          touchAction: "manipulation",
+          transition: "background 0.15s", touchAction: "manipulation",
         }}
       >
-        <Plus size={16} color={text.trim() ? "#fff" : "rgba(255,255,255,0.3)"} />
+        <Plus size={15} color={text.trim() ? "#fff" : "rgba(255,255,255,0.3)"} />
       </button>
     </form>
+  );
+}
+
+// ── Color Picker ────────────────────────────────────────────────────────────
+function ColorPicker({
+  value,
+  onChange,
+}: {
+  value: string | null;
+  onChange: (c: string | null) => void;
+}) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+      {/* Clear / none */}
+      <button
+        onClick={() => onChange(null)}
+        title="No color"
+        style={{
+          width: 24, height: 24, borderRadius: "50%",
+          background: "rgba(255,255,255,0.08)",
+          border: value === null ? "2.5px solid #fff" : "2px solid rgba(255,255,255,0.15)",
+          cursor: "pointer", flexShrink: 0,
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}
+      >
+        <X size={10} color="rgba(255,255,255,0.4)" />
+      </button>
+
+      {ALL_COLORS.map((c) => (
+        <button
+          key={c}
+          onClick={() => onChange(c)}
+          title={c}
+          style={{
+            width: 24, height: 24, borderRadius: "50%", background: c, flexShrink: 0,
+            border: value === c ? "2.5px solid #fff" : "2.5px solid transparent",
+            cursor: "pointer", transition: "transform 0.12s",
+            outline: value === c ? `2px solid ${c}` : "none",
+            outlineOffset: 1,
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.22)")}
+          onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+        />
+      ))}
+
+      {/* Custom color input */}
+      <label
+        title="Pick custom color"
+        style={{
+          width: 24, height: 24, borderRadius: "50%",
+          background: "conic-gradient(red, yellow, lime, cyan, blue, magenta, red)",
+          border: "2px solid rgba(255,255,255,0.2)",
+          cursor: "pointer", flexShrink: 0, overflow: "hidden", position: "relative",
+        }}
+      >
+        <input
+          type="color"
+          value={value ?? "#7c5af5"}
+          onChange={(e) => onChange(e.target.value)}
+          style={{
+            position: "absolute", inset: 0, opacity: 0,
+            cursor: "pointer", width: "100%", height: "100%",
+          }}
+        />
+      </label>
+    </div>
   );
 }
 
@@ -386,20 +327,26 @@ export function NoteEditor({
   const [content, setContent] = useState(note.content);
   const [tagInput, setTagInput] = useState("");
   const [showCompleted, setShowCompleted] = useState(false);
+  // Mobile: toggles the options panel (tags, color, archive, delete)
+  const [showOptions, setShowOptions] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const titleRef = useRef<HTMLInputElement>(null);
+  const [mounted, setMounted] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Detect mobile
+  // Single effect handles both mount flag and mobile detection, so they batch together
   useEffect(() => {
+    setMounted(true);
     const check = () => setIsMobile(window.innerWidth < 640);
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  useEffect(() => { setTitle(note.title); setContent(note.content); }, [note.id]);
+  useEffect(() => {
+    setTitle(note.title);
+    setContent(note.content);
+  }, [note.id]);
 
   const debounceSave = useCallback(
     (field: "title" | "content", val: string) => {
@@ -427,10 +374,6 @@ export function NoteEditor({
     setTagInput("");
   };
 
-  const removeTag = (tag: string) => {
-    onUpdate(note.id, { tags: note.tags.filter((t) => t !== tag) });
-  };
-
   const handleDelete = async () => {
     if (!confirmDelete) {
       setConfirmDelete(true);
@@ -452,338 +395,370 @@ export function NoteEditor({
     return () => window.removeEventListener("keydown", esc);
   }, [onClose]);
 
-  // Modal positioning: center on desktop, bottom sheet on mobile
-  const backdropAlign = isMobile ? "flex-end" : "center";
-  const modalRadius = isMobile ? "20px 20px 0 0" : "24px";
-  const modalWidth = isMobile ? "100%" : "min(720px, 100%)";
-  const modalMaxH = isMobile ? "92dvh" : "90vh";
+  // Don't render until mounted (avoids SSR mismatch and ensures isMobile is correct)
+  if (!mounted) return null;
 
-  return (
-    <AnimatePresence>
+  const modal = (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 9999,
+        background: "rgba(0,0,0,0.72)",
+        display: "flex",
+        alignItems: isMobile ? "flex-end" : "center",
+        justifyContent: "center",
+        padding: isMobile ? 0 : "clamp(8px,3vw,32px)",
+      }}
+    >
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.18 }}
-        onClick={onClose}
+        initial={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.96, y: 12 }}
+        animate={isMobile ? { y: 0 } : { opacity: 1, scale: 1, y: 0 }}
+        exit={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.96, y: 12 }}
+        transition={{ type: "spring", stiffness: 360, damping: 34 }}
+        onClick={(e) => e.stopPropagation()}
         style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 800,
-          background: "rgba(0,0,0,0.72)",
-          display: "flex",
-          alignItems: backdropAlign,
-          justifyContent: "center",
-          padding: isMobile ? 0 : "clamp(8px,3vw,32px)",
+          background: T.card,
+          border: `1px solid ${T.border}`,
+          borderRadius: isMobile ? "20px 20px 0 0" : "24px",
+          width: isMobile ? "100%" : "min(680px, 100%)",
+          maxHeight: isMobile ? "88dvh" : "88vh",
+          display: "flex", flexDirection: "column",
+          boxShadow: "0 -20px 80px rgba(0,0,0,0.7)",
+          backdropFilter: "blur(24px)",
+          overflow: "hidden",
         }}
       >
-        <motion.div
-          initial={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.96, y: 16 }}
-          animate={isMobile ? { y: 0 } : { opacity: 1, scale: 1, y: 0 }}
-          exit={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.96, y: 16 }}
-          transition={{ type: "spring", stiffness: 340, damping: 32 }}
-          onClick={(e) => e.stopPropagation()}
+        {/* ── Drag pill (mobile) ── */}
+        {isMobile && (
+          <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 2px" }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.18)" }} />
+          </div>
+        )}
+
+        {/* ── Header ── */}
+        <div
           style={{
-            background: T.card,
-            border: `1px solid ${T.border}`,
-            borderRadius: modalRadius,
-            width: modalWidth,
-            maxHeight: modalMaxH,
-            display: "flex",
-            flexDirection: "column",
-            boxShadow: "0 -20px 80px rgba(0,0,0,0.6)",
-            backdropFilter: "blur(24px)",
-            overflow: "hidden",
+            display: "flex", alignItems: "center", gap: 8,
+            padding: isMobile ? "10px 16px" : "14px 22px 12px",
+            borderBottom: `1px solid ${T.divider}`, flexShrink: 0,
           }}
         >
-          {/* ── Drag handle pill (mobile bottom sheet) ── */}
-          {isMobile && (
-            <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 4px" }}>
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.2)" }} />
-            </div>
-          )}
-
-          {/* ── Header ── */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              padding: isMobile ? "8px 16px 10px" : "16px 24px 12px",
-              borderBottom: `1px solid ${T.divider}`,
-              flexShrink: 0,
-            }}
-          >
-            <div style={{ width: 9, height: 9, borderRadius: "50%", background: section.color, flexShrink: 0 }} />
-            <span style={{ fontSize: 13, color: T.muted, fontWeight: 600, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {/* Section badge */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: section.color, flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: T.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {SECTION_ICONS[section.icon] ?? "📄"} {section.title}
             </span>
-
-            {/* Type toggle */}
-            <div style={{ display: "flex", gap: 4 }}>
-              {(["checklist", "note"] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => onUpdate(note.id, { type: t })}
-                  title={t === "checklist" ? "Checklist" : "Note"}
-                  style={{
-                    width: 32, height: 32, borderRadius: 9, border: "none",
-                    background: note.type === t ? "rgba(124,90,245,0.25)" : "rgba(255,255,255,0.05)",
-                    color: note.type === t ? "#a78bfa" : T.muted,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    cursor: "pointer", transition: "all 0.15s",
-                  }}
-                >
-                  {t === "checklist" ? <CheckSquare size={14} /> : <AlignLeft size={14} />}
-                </button>
-              ))}
-            </div>
-
-            {/* Pin */}
-            <button
-              onClick={() => onUpdate(note.id, { pinned: !note.pinned })}
-              title={note.pinned ? "Unpin" : "Pin"}
-              style={{
-                width: 32, height: 32, borderRadius: 9, border: "none",
-                background: note.pinned ? "rgba(255,214,0,0.15)" : "rgba(255,255,255,0.05)",
-                color: note.pinned ? "#fbbf24" : T.muted,
-                fontSize: 14, cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                transition: "all 0.15s",
-              }}
-            >
-              📌
-            </button>
-
-            <button
-              onClick={onClose}
-              style={{
-                width: 32, height: 32, borderRadius: 9, border: "none",
-                background: "rgba(255,255,255,0.05)", color: T.muted, cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}
-            >
-              <X size={15} />
-            </button>
           </div>
 
-          {/* ── Scrollable body (NO AddItemInput here) ── */}
-          <div
+          {/* Type toggle */}
+          <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
+            {(["checklist", "note"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => onUpdate(note.id, { type: t })}
+                title={t === "checklist" ? "Checklist" : "Note"}
+                style={{
+                  width: 30, height: 30, borderRadius: 8, border: "none",
+                  background: note.type === t ? "rgba(124,90,245,0.25)" : "rgba(255,255,255,0.05)",
+                  color: note.type === t ? "#a78bfa" : T.muted,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer",
+                }}
+              >
+                {t === "checklist" ? <CheckSquare size={13} /> : <AlignLeft size={13} />}
+              </button>
+            ))}
+          </div>
+
+          {/* Pin */}
+          <button
+            onClick={() => onUpdate(note.id, { pinned: !note.pinned })}
+            title={note.pinned ? "Unpin" : "Pin"}
             style={{
-              flex: 1,
-              overflowY: "auto",
-              padding: isMobile ? "16px 16px 10px" : "20px 24px 12px",
-              WebkitOverflowScrolling: "touch",
+              width: 30, height: 30, borderRadius: 8, border: "none",
+              background: note.pinned ? "rgba(255,214,0,0.15)" : "rgba(255,255,255,0.05)",
+              fontSize: 13, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
             }}
           >
-            {/* Title */}
-            <input
-              ref={titleRef}
-              value={title}
-              onChange={(e) => { setTitle(e.target.value); debounceSave("title", e.target.value); }}
-              placeholder="Title…"
-              enterKeyHint="done"
+            📌
+          </button>
+
+          {/* Options toggle — mobile only */}
+          {isMobile && (
+            <button
+              onClick={() => setShowOptions((v) => !v)}
+              title="More options"
               style={{
-                display: "block", width: "100%", background: "transparent",
-                border: "none", outline: "none",
-                fontSize: isMobile ? 20 : 22, fontWeight: 700,
-                color: T.text, caretColor: "#7c5af5",
-                marginBottom: 16, letterSpacing: "-0.3px",
-              }}
-            />
-
-            {/* Checklist items (active only — no AddItemInput inside scroll) */}
-            {note.type === "checklist" && (
-              <div>
-                {activeItems.length === 0 && completedItems.length === 0 && (
-                  <p style={{ fontSize: 14, color: T.muted, marginBottom: 8 }}>
-                    No items yet — use the field below to add one
-                  </p>
-                )}
-
-                <Reorder.Group
-                  axis="y"
-                  values={activeItems}
-                  onReorder={(items) => onReorderItems(note.id, [...items, ...completedItems])}
-                  style={{ margin: 0, padding: 0 }}
-                >
-                  {activeItems.map((item) => (
-                    <ChecklistRow
-                      key={item.id}
-                      item={item}
-                      noteId={note.id}
-                      isMobile={isMobile}
-                      onUpdate={onUpdateItem}
-                      onDelete={onDeleteItem}
-                    />
-                  ))}
-                </Reorder.Group>
-
-                {/* Completed section */}
-                {completedItems.length > 0 && (
-                  <div style={{ marginTop: 16 }}>
-                    <button
-                      onClick={() => setShowCompleted((v) => !v)}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 6,
-                        background: "none", border: "none", color: T.muted,
-                        fontSize: 12, cursor: "pointer", padding: "4px 0",
-                        fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase",
-                      }}
-                    >
-                      {showCompleted ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-                      {completedItems.length} Completed
-                    </button>
-                    <AnimatePresence>
-                      {showCompleted && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          style={{ overflow: "hidden" }}
-                        >
-                          {completedItems.map((item) => (
-                            <div
-                              key={item.id}
-                              style={{
-                                display: "flex", alignItems: "center", gap: 10,
-                                padding: "9px 0", borderBottom: `1px solid ${T.divider}`,
-                              }}
-                            >
-                              <button
-                                onClick={() => onUpdateItem(item.id, note.id, { completed: false })}
-                                style={{
-                                  flexShrink: 0, width: 22, height: 22, borderRadius: 6,
-                                  border: "none", background: PRIORITY_CONFIG[item.priority].color,
-                                  display: "flex", alignItems: "center", justifyContent: "center",
-                                  cursor: "pointer", marginLeft: isMobile ? 0 : 22,
-                                }}
-                              >
-                                <Check size={11} color="#fff" strokeWidth={3} />
-                              </button>
-                              <span
-                                style={{
-                                  flex: 1, fontSize: 14, color: "rgba(255,255,255,0.22)",
-                                  textDecoration: "line-through", wordBreak: "break-word",
-                                }}
-                              >
-                                {item.text}
-                              </span>
-                              <button
-                                onClick={() => onDeleteItem(item.id, note.id)}
-                                style={{
-                                  background: "none", border: "none",
-                                  color: "rgba(255,255,255,0.15)", cursor: "pointer", lineHeight: 0,
-                                }}
-                              >
-                                <X size={13} />
-                              </button>
-                            </div>
-                          ))}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Text note */}
-            {note.type === "note" && (
-              <textarea
-                value={content}
-                onChange={(e) => { setContent(e.target.value); debounceSave("content", e.target.value); }}
-                placeholder="Write something…"
-                style={{
-                  display: "block", width: "100%", minHeight: 160,
-                  background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
-                  borderRadius: 12, padding: "12px 14px", color: T.text,
-                  fontSize: 15, lineHeight: 1.65, outline: "none", resize: "vertical",
-                  caretColor: "#7c5af5", fontFamily: "inherit",
-                }}
-              />
-            )}
-
-            {/* Tags */}
-            <div style={{ marginTop: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <TagIcon size={12} color={T.muted} />
-                {note.tags.map((tag) => (
-                  <div
-                    key={tag}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 5,
-                      background: "rgba(124,90,245,0.18)", border: "1px solid rgba(124,90,245,0.3)",
-                      borderRadius: 20, padding: "3px 10px", fontSize: 12, color: "#c4b5fd",
-                    }}
-                  >
-                    #{tag}
-                    <button
-                      onClick={() => removeTag(tag)}
-                      style={{ background: "none", border: "none", color: "rgba(196,181,253,0.5)", cursor: "pointer", padding: 0, lineHeight: 0 }}
-                    >
-                      <X size={11} />
-                    </button>
-                  </div>
-                ))}
-                <form onSubmit={(e) => { e.preventDefault(); addTag(); }} style={{ display: "flex" }}>
-                  <input
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    enterKeyHint="done"
-                    placeholder="Add tag…"
-                    style={{
-                      background: "transparent", border: "none", outline: "none",
-                      fontSize: 12, color: T.muted, caretColor: "#7c5af5", width: 80,
-                    }}
-                  />
-                </form>
-              </div>
-            </div>
-
-            {/* Color picker */}
-            <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 12, color: T.muted }}>Color</span>
-              {[null, ...SECTION_COLORS].map((c) => (
-                <button
-                  key={c ?? "none"}
-                  onClick={() => onUpdate(note.id, { color: c })}
-                  style={{
-                    width: 20, height: 20, borderRadius: "50%",
-                    background: c ?? "rgba(255,255,255,0.1)",
-                    border: note.color === c ? "2.5px solid #fff" : `2px solid ${c ?? "rgba(255,255,255,0.15)"}`,
-                    cursor: "pointer", flexShrink: 0, transition: "transform 0.15s",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.2)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* ── Sticky "Add item" bar — always visible, never scrolls away ── */}
-          {note.type === "checklist" && (
-            <div
-              style={{
-                padding: isMobile ? "10px 16px" : "10px 24px",
-                borderTop: `1px solid ${T.divider}`,
-                flexShrink: 0,
-                background: T.card,
+                width: 30, height: 30, borderRadius: 8, border: "none",
+                background: showOptions ? "rgba(124,90,245,0.2)" : "rgba(255,255,255,0.05)",
+                color: showOptions ? "#a78bfa" : T.muted,
+                fontSize: 16, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
               }}
             >
-              <AddItemInput noteId={note.id} onAdd={onAddItem} />
+              ⋯
+            </button>
+          )}
+
+          {/* Close */}
+          <button
+            onClick={onClose}
+            style={{
+              width: 30, height: 30, borderRadius: 8, border: "none",
+              background: "rgba(255,255,255,0.05)", color: T.muted, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            <X size={14} />
+          </button>
+        </div>
+
+        {/* ── Scrollable body ── */}
+        <div
+          style={{
+            flex: 1, overflowY: "auto",
+            padding: isMobile ? "14px 16px 10px" : "18px 22px 10px",
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
+          {/* Title */}
+          <input
+            value={title}
+            onChange={(e) => { setTitle(e.target.value); debounceSave("title", e.target.value); }}
+            placeholder="Title…"
+            enterKeyHint="done"
+            style={{
+              display: "block", width: "100%", background: "transparent",
+              border: "none", outline: "none",
+              fontSize: isMobile ? 21 : 22, fontWeight: 700,
+              color: T.text, caretColor: "#7c5af5",
+              marginBottom: 14, letterSpacing: "-0.3px",
+            }}
+          />
+
+          {/* Checklist */}
+          {note.type === "checklist" && (
+            <div>
+              {activeItems.length === 0 && completedItems.length === 0 && (
+                <p style={{ fontSize: 14, color: T.muted, marginBottom: 8 }}>
+                  No items yet — add one below
+                </p>
+              )}
+
+              <Reorder.Group
+                axis="y"
+                values={activeItems}
+                onReorder={(items) => onReorderItems(note.id, [...items, ...completedItems])}
+                style={{ margin: 0, padding: 0 }}
+              >
+                {activeItems.map((item) => (
+                  <ChecklistRow
+                    key={item.id}
+                    item={item}
+                    noteId={note.id}
+                    isMobile={isMobile}
+                    onUpdate={onUpdateItem}
+                    onDelete={onDeleteItem}
+                  />
+                ))}
+              </Reorder.Group>
+
+              {/* Completed section */}
+              {completedItems.length > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <button
+                    onClick={() => setShowCompleted((v) => !v)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 6,
+                      background: "none", border: "none", color: T.muted,
+                      fontSize: 12, cursor: "pointer", padding: "4px 0",
+                      fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase",
+                    }}
+                  >
+                    {showCompleted ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                    {completedItems.length} Completed
+                  </button>
+                  <AnimatePresence>
+                    {showCompleted && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        style={{ overflow: "hidden" }}
+                      >
+                        {completedItems.map((item) => (
+                          <div
+                            key={item.id}
+                            style={{
+                              display: "flex", alignItems: "center", gap: 8,
+                              padding: "8px 0", borderBottom: `1px solid ${T.divider}`,
+                            }}
+                          >
+                            <button
+                              onClick={() => onUpdateItem(item.id, note.id, { completed: false })}
+                              style={{
+                                flexShrink: 0, width: 22, height: 22, borderRadius: 6,
+                                border: "none", background: PRIORITY_CONFIG[item.priority].color,
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                cursor: "pointer",
+                              }}
+                            >
+                              <Check size={11} color="#fff" strokeWidth={3} />
+                            </button>
+                            <span
+                              style={{
+                                flex: 1, fontSize: 14, color: "rgba(255,255,255,0.22)",
+                                textDecoration: "line-through", wordBreak: "break-word",
+                              }}
+                            >
+                              {item.text}
+                            </span>
+                            <button
+                              onClick={() => onDeleteItem(item.id, note.id)}
+                              style={{
+                                background: "none", border: "none",
+                                color: "rgba(255,255,255,0.15)", cursor: "pointer", lineHeight: 0,
+                              }}
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
             </div>
           )}
 
-          {/* ── Footer ── */}
+          {/* Text note */}
+          {note.type === "note" && (
+            <textarea
+              value={content}
+              onChange={(e) => { setContent(e.target.value); debounceSave("content", e.target.value); }}
+              placeholder="Write something…"
+              style={{
+                display: "block", width: "100%",
+                minHeight: isMobile ? 180 : 200,
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 12, padding: "12px 14px", color: T.text,
+                fontSize: 15, lineHeight: 1.65, outline: "none", resize: "vertical",
+                caretColor: "#7c5af5", fontFamily: "inherit",
+              }}
+            />
+          )}
+
+          {/* ── Options panel ──
+               Desktop: always visible
+               Mobile: shown when "⋯" is tapped */}
+          {(!isMobile || showOptions) && (
+            <div style={{ marginTop: 18 }}>
+              {/* Tags */}
+              <div style={{ marginBottom: 16 }}>
+                <p style={{ fontSize: 11, color: T.muted, textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 8, fontWeight: 600 }}>
+                  Tags
+                </p>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                  {note.tags.map((tag) => (
+                    <div
+                      key={tag}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 4,
+                        background: "rgba(124,90,245,0.15)", border: "1px solid rgba(124,90,245,0.3)",
+                        borderRadius: 20, padding: "3px 10px", fontSize: 12, color: "#c4b5fd",
+                      }}
+                    >
+                      #{tag}
+                      <button
+                        onClick={() => onUpdate(note.id, { tags: note.tags.filter((t) => t !== tag) })}
+                        style={{ background: "none", border: "none", color: "rgba(196,181,253,0.5)", cursor: "pointer", padding: 0, lineHeight: 0 }}
+                      >
+                        <X size={10} />
+                      </button>
+                    </div>
+                  ))}
+                  <form onSubmit={(e) => { e.preventDefault(); addTag(); }} style={{ display: "flex" }}>
+                    <input
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      enterKeyHint="done"
+                      placeholder="Add tag…"
+                      style={{
+                        background: "transparent", border: "none", outline: "none",
+                        fontSize: 12, color: T.muted, caretColor: "#7c5af5", width: 80,
+                      }}
+                    />
+                  </form>
+                </div>
+              </div>
+
+              {/* Note color */}
+              <div style={{ marginBottom: isMobile ? 18 : 12 }}>
+                <p style={{ fontSize: 11, color: T.muted, textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 8, fontWeight: 600 }}>
+                  Note Color
+                </p>
+                <ColorPicker value={note.color} onChange={(c) => onUpdate(note.id, { color: c })} />
+              </div>
+
+              {/* Archive / Delete — inside options panel on mobile */}
+              {isMobile && (
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={handleArchive}
+                    style={{
+                      flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                      background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)",
+                      borderRadius: 12, padding: "11px 0", color: T.muted, fontSize: 13, cursor: "pointer",
+                    }}
+                  >
+                    <Archive size={13} /> Archive
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    style={{
+                      flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                      background: confirmDelete ? "rgba(239,68,68,0.2)" : "rgba(239,68,68,0.08)",
+                      border: `1px solid ${confirmDelete ? "rgba(239,68,68,0.5)" : "rgba(239,68,68,0.2)"}`,
+                      borderRadius: 12, padding: "11px 0",
+                      color: confirmDelete ? "#f87171" : "rgba(239,68,68,0.6)",
+                      fontSize: 13, cursor: "pointer",
+                    }}
+                  >
+                    <Trash2 size={13} /> {confirmDelete ? "Confirm?" : "Delete"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── Sticky add-item bar — always visible, never scrolls away ── */}
+        {note.type === "checklist" && (
           <div
             style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: isMobile ? "10px 16px 16px" : "12px 24px 16px",
+              padding: isMobile ? "10px 16px" : "10px 22px",
               borderTop: `1px solid ${T.divider}`,
-              flexShrink: 0,
+              flexShrink: 0, background: T.card,
+            }}
+          >
+            <AddItemInput noteId={note.id} onAdd={onAddItem} />
+          </div>
+        )}
+
+        {/* ── Footer — desktop only (mobile uses options panel) ── */}
+        {!isMobile && (
+          <div
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "10px 22px 14px", borderTop: `1px solid ${T.divider}`, flexShrink: 0,
             }}
           >
             <div style={{ fontSize: 11, color: T.muted }}>
@@ -798,14 +773,13 @@ export function NoteEditor({
                 style={{
                   display: "flex", alignItems: "center", gap: 6,
                   background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 10, padding: "8px 14px", color: T.muted,
-                  fontSize: 13, cursor: "pointer", transition: "all 0.15s",
+                  borderRadius: 10, padding: "7px 14px", color: T.muted, fontSize: 13, cursor: "pointer",
+                  transition: "all 0.15s",
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#fff"; }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.09)"; e.currentTarget.style.color = "#fff"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = T.muted; }}
               >
-                <Archive size={13} />
-                {!isMobile && "Archive"}
+                <Archive size={13} /> Archive
               </button>
               <button
                 onClick={handleDelete}
@@ -813,17 +787,21 @@ export function NoteEditor({
                   display: "flex", alignItems: "center", gap: 6,
                   background: confirmDelete ? "rgba(239,68,68,0.2)" : "rgba(239,68,68,0.08)",
                   border: `1px solid ${confirmDelete ? "rgba(239,68,68,0.5)" : "rgba(239,68,68,0.2)"}`,
-                  borderRadius: 10, padding: "8px 14px",
+                  borderRadius: 10, padding: "7px 14px",
                   color: confirmDelete ? "#f87171" : "rgba(239,68,68,0.6)",
-                  fontSize: 13, cursor: "pointer", transition: "all 0.15s",
+                  fontSize: 13, cursor: "pointer",
                 }}
               >
-                {confirmDelete ? "Confirm?" : (!isMobile ? "Delete" : "🗑")}
+                <Trash2 size={13} /> {confirmDelete ? "Confirm?" : "Delete"}
               </button>
             </div>
           </div>
-        </motion.div>
+        )}
       </motion.div>
-    </AnimatePresence>
+    </motion.div>
   );
+
+  // createPortal renders at document.body, escaping any CSS stacking context
+  // created by framer-motion transforms on parent elements (which trap position:fixed children).
+  return createPortal(modal, document.body);
 }
