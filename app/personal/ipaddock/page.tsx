@@ -2,39 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Volume2, VolumeX, WifiOff, X, Plus, Trash2, Pencil, Check } from "lucide-react";
-import { Responsive, WidthProvider, type Layout as GridLayoutItem } from "react-grid-layout";
-import "react-grid-layout/css/styles.css";
-import "react-resizable/css/styles.css";
+import { ArrowLeft, Volume2, VolumeX, WifiOff, X, Plus, Trash2 } from "lucide-react";
 import { useNotes } from "@/hooks/useNotes";
-
-const ResponsiveGridLayout = WidthProvider(Responsive);
-const GRID_STORAGE_KEY = "ipaddock_grid_layout_v1";
-
-type GridLayout = GridLayoutItem[];
-
-function defaultGridLayout(sectionIds: string[]): GridLayout {
-  const base: GridLayout = [
-    { i: "clocks",    x: 0, y: 0,  w: 4, h: 11, minW: 2, minH: 5 },
-    { i: "clock-est", x: 4, y: 0,  w: 5, h: 11, minW: 3, minH: 5 },
-    { i: "weather",   x: 0, y: 11, w: 5, h: 10, minW: 3, minH: 5 },
-    { i: "calendar",  x: 5, y: 11, w: 4, h: 10, minW: 3, minH: 5 },
-  ];
-  const todoIds = sectionIds.length ? sectionIds : ["empty"];
-  const todos: GridLayout = todoIds.map((id, i) => ({
-    i: `todo-${id}`, x: 9, y: i * 10, w: 3, h: 10, minW: 2, minH: 4,
-  }));
-  return [...base, ...todos];
-}
-
-function mergeGridLayout(saved: GridLayout | null, wanted: GridLayout): GridLayout {
-  if (!saved) return wanted;
-  const savedMap = new Map(saved.map((l) => [l.i, l]));
-  return wanted.map((w) => {
-    const s = savedMap.get(w.i);
-    return s ? { ...w, x: s.x, y: s.y, w: s.w, h: s.h } : w;
-  });
-}
 
 // ── Local mute-server helpers ──────────────────────────────────────────────
 const MUTE_TOKEN = process.env.NEXT_PUBLIC_MUTE_API_TOKEN ?? "";
@@ -158,7 +127,7 @@ function parseWeather(raw: unknown): WData {
   if (idx < 0) idx = 0;
 
   const hourly: HEntry[] = [];
-  for (let i = idx; i < idx + 12 && i < times.length; i++) {
+  for (let i = idx; i < idx + 5 && i < times.length; i++) {
     const h24  = parseInt(times[i].slice(11, 13));
     const ampm = h24 >= 12 ? "PM" : "AM";
     const h12  = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
@@ -247,8 +216,6 @@ export default function IpadDockPage() {
   const [showToast,   setShowToast]   = useState(false);
   const [showWeekly, setShowWeekly] = useState(false);
   const [todoPopup,  setTodoPopup]  = useState<string | null>(null);
-  const [editMode,   setEditMode]   = useState(false);
-  const [gridLayout, setGridLayout] = useState<GridLayout>(() => defaultGridLayout([]));
 
   const [zoneTimes, setZoneTimes] = useState<ZoneTime[]>(ZONES.map(() => ({ hhmm: "0:00", ss: "00", ampm: "AM" })));
   const [dateInfo,  setDateInfo]  = useState({ day: "", date: "" });
@@ -303,24 +270,6 @@ export default function IpadDockPage() {
     else setAuthed(true);
   }, [router]);
 
-  // Grid layout — load saved positions/sizes and merge with the current set of dock sections
-  const dockSectionKey = dockSections.map((s) => s.id).join(",");
-  useEffect(() => {
-    const wanted = defaultGridLayout(dockSections.map((s) => s.id));
-    let saved: GridLayout | null = null;
-    try {
-      const raw = localStorage.getItem(GRID_STORAGE_KEY);
-      if (raw) saved = JSON.parse(raw);
-    } catch {}
-    setGridLayout(mergeGridLayout(saved, wanted));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dockSectionKey]);
-
-  const handleGridLayoutChange = useCallback((l: GridLayout) => {
-    setGridLayout(l);
-    try { localStorage.setItem(GRID_STORAGE_KEY, JSON.stringify(l)); } catch {}
-  }, []);
-
   // Font
   useEffect(() => {
     const link = document.createElement("link");
@@ -372,7 +321,8 @@ export default function IpadDockPage() {
     setCal({ month: MONTHS[m], year: String(y), days });
   }, []);
 
-  // Weather (Open-Meteo, XHR for old iOS compat)
+  // Weather (Open-Meteo, XHR for old iOS compat) — refetched every 10 min so the
+  // 5-hour window advances forward as real hours pass, no manual scrolling needed.
   useEffect(() => {
     const go = () => xhrGet(WEATHER_URL, (d) => { try { setWeather(parseWeather(d)); } catch {} }, () => {});
     go();
@@ -545,78 +495,28 @@ export default function IpadDockPage() {
       <div style={{ display:"flex", flexDirection:"column", width:"100vw", height:"100vh", overflow:"hidden", background:T.bg, color:T.text, fontFamily:"'Inter',-apple-system,sans-serif", userSelect:"none", WebkitUserSelect:"none", position:"relative", zIndex:1 }}>
 
         {/* ── TOP CONTENT (flex:1) ─────────────────────────────────────────── */}
-        <div style={{ flex:1, display:"flex", flexDirection:"column", gap:8, padding:"14px 14px 0 14px", minHeight:0, overflow:"hidden" }}>
+        <div style={{ flex:1, display:"flex", gap:10, padding:"14px 14px 0 14px", minHeight:0, overflow:"hidden" }}>
 
-          {/* Top bar: Hub | Date | Edit | Mute */}
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
-            <button onClick={() => router.push("/personal")} style={{ ...iconBtn({ padding:"7px 14px", borderRadius:11, fontSize:12 }), display:"flex", alignItems:"center", gap:6 }}>
-              <ArrowLeft size={12} color={T.iconColor} />
-              <span style={{ color:T.iconColor }}>Hub</span>
-            </button>
+          {/* LEFT MAIN ~68% */}
+          <div style={{ flex:"0 0 68%", display:"flex", flexDirection:"column", gap:10, minWidth:0, minHeight:0, overflow:"hidden" }}>
 
-            <div style={{ fontSize:"clamp(11px,1.1vw,15px)", color:T.muted, letterSpacing:"1.5px", textTransform:"uppercase" }}>
-              {editMode ? "Drag to move · drag corner to resize" : `${dateInfo.day} · ${dateInfo.date}`}
-            </div>
-
-            <div style={{ display:"flex", gap:10, alignItems:"center" }}>
-              <button
-                onClick={() => setEditMode(m => !m)}
-                title={editMode ? "Done editing layout" : "Edit layout"}
-                style={{
-                  ...iconBtn({
-                    width:48, height:48, borderRadius:14,
-                    background: editMode ? "rgba(124,90,245,0.28)" : T.iconBtn,
-                    border:     editMode ? "1px solid rgba(124,90,245,0.6)" : `1px solid ${T.iconBtnBrd}`,
-                  }),
-                }}
-              >
-                {editMode ? <Check size={20} color="#a78bfa" /> : <Pencil size={18} color={T.iconColor} />}
+            {/* Top bar: Hub | Date (centered) */}
+            <div style={{ display:"flex", alignItems:"center", flexShrink:0, position:"relative" }}>
+              <button onClick={() => router.push("/personal")} style={{ ...iconBtn({ padding:"7px 14px", borderRadius:11, fontSize:12 }), display:"flex", alignItems:"center", gap:6 }}>
+                <ArrowLeft size={12} color={T.iconColor} />
+                <span style={{ color:T.iconColor }}>Hub</span>
               </button>
 
-              <button
-                onClick={handleMute}
-                title={muteOffline ? "Mute server offline" : muted ? "Unmute" : "Mute"}
-                style={{
-                  ...iconBtn({
-                    width:58, height:58, borderRadius:16,
-                    background: muteOffline ? "rgba(255,255,255,0.03)"
-                              : muted       ? "rgba(248,113,113,0.18)"
-                              :               T.iconBtn,
-                    border:     muteOffline ? "1px solid rgba(255,255,255,0.06)"
-                              : muted       ? "1px solid rgba(248,113,113,0.45)"
-                              :               `1px solid ${T.iconBtnBrd}`,
-                    opacity: muteOffline ? 0.45 : 1,
-                  }),
-                  animation: (!muteOffline && muted) ? "mute-ring 2s ease-in-out infinite" : "none",
-                }}
-              >
-                {muteOffline
-                  ? <WifiOff size={22} color="rgba(255,255,255,0.3)" />
-                  : muted
-                    ? <VolumeX size={24} color="#f87171" />
-                    : <Volume2 size={24} color={T.iconColor} />
-                }
-              </button>
+              <div style={{ position:"absolute", left:"50%", top:"50%", transform:"translate(-50%,-50%)", fontSize:"clamp(11px,1.1vw,15px)", color:T.muted, letterSpacing:"1.5px", textTransform:"uppercase", whiteSpace:"nowrap" }}>
+                {dateInfo.day} · {dateInfo.date}
+              </div>
             </div>
-          </div>
 
-          {/* Dynamic, draggable/resizable widget grid */}
-          <div style={{ flex:1, minHeight:0, overflowY:"auto", overflowX:"hidden" }}>
-            <ResponsiveGridLayout
-              className="layout"
-              layouts={{ lg: gridLayout }}
-              breakpoints={{ lg: 0 }}
-              cols={{ lg: 12 }}
-              rowHeight={20}
-              margin={[10, 10]}
-              containerPadding={[0, 0]}
-              isDraggable={editMode}
-              isResizable={editMode}
-              compactType="vertical"
-              onLayoutChange={handleGridLayoutChange}
-            >
+            {/* CLOCKS: PST+CST stacked | EST big */}
+            <div style={{ flex:"1.3", display:"grid", gridTemplateColumns:"0.6fr 1fr", gap:10, minHeight:0 }}>
+
               {/* PST + CST */}
-              <div key="clocks" style={{ ...card, display:"flex", flexDirection:"column", overflow:"hidden", position:"relative", outline: editMode ? "2px dashed rgba(124,90,245,0.5)" : "none", cursor: editMode ? "move" : "default" }}>
+              <div style={{ ...card, display:"flex", flexDirection:"column", overflow:"hidden", position:"relative" }}>
                 {[0,1].map((i) => (
                   <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center", textAlign:"center", padding:"14px 16px", borderBottom: i === 0 ? `1px solid ${T.border}` : "none", position:"relative", overflow:"hidden" }}>
                     <div style={{ position:"absolute", left:0, right:0, height:1, background:`linear-gradient(90deg,transparent,${ZONES[i].color}55,transparent)`, animation:`scan-line ${6+i}s linear infinite ${i*2}s`, pointerEvents:"none" }} />
@@ -630,7 +530,7 @@ export default function IpadDockPage() {
               </div>
 
               {/* EST */}
-              <div key="clock-est" style={{ ...card, display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center", textAlign:"center", position:"relative", overflow:"hidden", boxShadow:`0 0 80px ${ZONES[2].glow}22, inset 0 1px 0 ${ZONES[2].color}15`, outline: editMode ? "2px dashed rgba(124,90,245,0.5)" : "none", cursor: editMode ? "move" : "default" }}>
+              <div style={{ ...card, display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center", textAlign:"center", position:"relative", overflow:"hidden", boxShadow:`0 0 80px ${ZONES[2].glow}22, inset 0 1px 0 ${ZONES[2].color}15` }}>
                 <div style={{ position:"absolute", left:0, right:0, height:1, background:`linear-gradient(90deg,transparent,${ZONES[2].color}55,transparent)`, animation:"scan-line 8s linear infinite 4s", pointerEvents:"none" }} />
                 <div style={{ position:"absolute", top:14, right:18, width:9, height:9, borderRadius:"50%", background:ZONES[2].color, boxShadow:`0 0 16px ${ZONES[2].color}`, animation:"twinkle 2s ease-in-out infinite 1.4s" }} />
                 <div style={{ fontSize:"clamp(15px,2vw,28px)", fontWeight:800, color:ZONES[2].color, letterSpacing:"0.35em", textTransform:"uppercase", marginBottom:"clamp(10px,2vh,22px)", textShadow:`0 0 28px ${ZONES[2].color}` }}>EST</div>
@@ -641,118 +541,123 @@ export default function IpadDockPage() {
                 <div style={{ fontSize:"clamp(14px,1.8vw,26px)", fontWeight:700, color:ZONES[2].color, letterSpacing:"0.2em", marginTop:"clamp(6px,1vh,14px)", opacity:0.85 }}>{zoneTimes[2].ampm}</div>
                 <div style={{ fontSize:"clamp(10px,1.2vw,16px)", color:T.muted, letterSpacing:"3px", textTransform:"uppercase", marginTop:"clamp(10px,1.8vh,20px)" }}>New York</div>
               </div>
+            </div>
+
+            {/* MIDDLE: Weather | Calendar */}
+            <div style={{ flex:"1.3", display:"grid", gridTemplateColumns:"0.85fr 1.15fr", gap:10, minHeight:0 }}>
 
               {/* Weather */}
-              <div key="weather" onClick={editMode ? undefined : () => weather && setShowWeekly(true)} style={{ ...card, padding:"clamp(10px,1.4vh,16px) clamp(10px,1.4vw,16px)", display:"flex", flexDirection:"column", cursor: editMode ? "move" : (weather ? "pointer" : "default"), overflow:"hidden", outline: editMode ? "2px dashed rgba(124,90,245,0.5)" : "none" }}>
+              <div onClick={() => weather && setShowWeekly(true)} style={{ ...card, padding:"clamp(8px,1.2vh,16px) clamp(10px,1.4vw,16px)", display:"flex", flexDirection:"column", cursor: weather ? "pointer" : "default", overflow:"hidden" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
-                  <div style={{ fontSize:"clamp(38px,5vw,62px)", lineHeight:1, flexShrink:0 }}>{weather?.icon ?? "🌤"}</div>
+                  <div style={{ fontSize:"clamp(28px,min(5vw,6vh),62px)", lineHeight:1, flexShrink:0 }}>{weather?.icon ?? "🌤"}</div>
                   <div style={{ minWidth:0 }}>
                     <div style={{ display:"flex", alignItems:"baseline", gap:8, flexWrap:"wrap" }}>
-                      <span style={{ fontSize:"clamp(32px,4.2vw,58px)", fontWeight:700, lineHeight:1, color:T.text }}>{weather?.tempC ?? "--"}°C</span>
-                      <span style={{ fontSize:"clamp(16px,2vw,24px)", color:T.muted, fontWeight:500 }}>{weather ? cToF(weather.tempC) : "--"}°F</span>
+                      <span style={{ fontSize:"clamp(24px,min(4.2vw,5vh),58px)", fontWeight:700, lineHeight:1, color:T.text }}>{weather?.tempC ?? "--"}°C</span>
+                      <span style={{ fontSize:"clamp(14px,min(2vw,2.4vh),24px)", color:T.muted, fontWeight:500 }}>{weather ? cToF(weather.tempC) : "--"}°F</span>
                     </div>
-                    <div style={{ fontSize:"clamp(13px,1.5vw,18px)", fontWeight:600, color:T.sub, marginTop:3 }}>{weather?.desc ?? "Loading…"}</div>
-                    <div style={{ fontSize:"clamp(10px,1.1vw,13px)", color:T.muted, marginTop:2 }}>Downingtown, PA</div>
+                    <div style={{ fontSize:"clamp(12px,min(1.5vw,1.8vh),18px)", fontWeight:600, color:T.sub, marginTop:3 }}>{weather?.desc ?? "Loading…"}</div>
+                    <div style={{ fontSize:"clamp(9px,min(1.1vw,1.4vh),13px)", color:T.muted, marginTop:2 }}>Downingtown, PA</div>
                   </div>
                 </div>
-                <div style={{ display:"flex", gap:"clamp(12px,1.8vw,22px)", marginTop:"clamp(6px,1vh,10px)", flexShrink:0 }}>
+                <div style={{ display:"flex", gap:"clamp(12px,1.8vw,22px)", marginTop:"clamp(4px,0.8vh,10px)", flexShrink:0 }}>
                   {([["Feels like", `${weather?.feelsC ?? "--"}°C`], ["Wind", `${weather?.windMph ?? "--"} mph`], ["Humidity", `${weather?.humidity ?? "--"}%`]] as [string,string][]).map(([lbl, val]) => (
                     <div key={lbl}>
-                      <div style={{ fontSize:"clamp(13px,1.5vw,18px)", fontWeight:700, color:T.text }}>{val}</div>
-                      <div style={{ fontSize:"clamp(9px,1vw,12px)", color:T.muted, textTransform:"uppercase", letterSpacing:"0.5px", marginTop:1 }}>{lbl}</div>
+                      <div style={{ fontSize:"clamp(12px,min(1.5vw,1.8vh),18px)", fontWeight:700, color:T.text }}>{val}</div>
+                      <div style={{ fontSize:"clamp(8px,min(1vw,1.2vh),12px)", color:T.muted, textTransform:"uppercase", letterSpacing:"0.5px", marginTop:1 }}>{lbl}</div>
                     </div>
                   ))}
                 </div>
-                {weather && <div style={{ fontSize:"clamp(9px,1vw,12px)", color:T.muted, opacity:0.5, marginTop:"clamp(3px,0.5vh,6px)" }}>TAP FOR WEEKLY FORECAST ▸</div>}
-                <div style={{ flex:1, display:"flex", overflowX:"auto", gap:"clamp(6px,1vw,14px)", marginTop:"clamp(6px,1vh,10px)", paddingBottom:4, alignItems:"flex-start" }}>
-                  {(weather?.hourly ?? []).map((h, i) => (
-                    <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3, flexShrink:0, minWidth:"clamp(40px,5vw,58px)" }}>
-                      <div style={{ fontSize:"clamp(10px,1.2vw,14px)", color:T.muted, whiteSpace:"nowrap", fontWeight:500 }}>{h.label}</div>
-                      <div style={{ fontSize:"clamp(22px,3vw,36px)", lineHeight:1 }}>{h.icon}</div>
-                      <div style={{ fontSize:"clamp(12px,1.4vw,16px)", fontWeight:700, color:T.text }}>{h.tempC}°</div>
-                      <div style={{ width:"clamp(26px,3vw,36px)", height:3, borderRadius:2, background:"rgba(96,165,250,0.15)", overflow:"hidden" }}>
+                {weather && <div style={{ fontSize:"clamp(8px,min(1vw,1.2vh),12px)", color:T.muted, opacity:0.5, marginTop:"clamp(2px,0.4vh,6px)" }}>TAP FOR WEEKLY FORECAST ▸</div>}
+                {/* Next 5 hours — fixed count, no horizontal scroll; the window itself
+                    advances forward every hour via the periodic refetch above. */}
+                <div style={{ flex:1, display:"flex", overflow:"hidden", gap:"clamp(4px,1vw,14px)", marginTop:"clamp(4px,0.8vh,10px)", alignItems:"center", minHeight:0 }}>
+                  {(weather?.hourly ?? []).slice(0, 5).map((h, i) => (
+                    <div key={i} style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2 }}>
+                      <div style={{ fontSize:"clamp(9px,min(1.2vw,1.3vh),14px)", color:T.muted, whiteSpace:"nowrap", fontWeight:500 }}>{h.label}</div>
+                      <div style={{ fontSize:"clamp(16px,min(3vw,3vh),36px)", lineHeight:1 }}>{h.icon}</div>
+                      <div style={{ fontSize:"clamp(10px,min(1.4vw,1.5vh),16px)", fontWeight:700, color:T.text }}>{h.tempC}°</div>
+                      <div style={{ width:"clamp(18px,3vw,36px)", height:3, borderRadius:2, background:"rgba(96,165,250,0.15)", overflow:"hidden" }}>
                         <div style={{ width:`${h.precip}%`, height:"100%", background:"#60a5fa", borderRadius:2 }} />
                       </div>
-                      {h.precip > 5 && <div style={{ fontSize:"clamp(9px,1vw,12px)", color:"#60a5fa", fontWeight:600 }}>{h.precip}%</div>}
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Calendar */}
-              <div key="calendar" style={{ ...card, padding:"clamp(12px,1.8vh,20px) clamp(12px,1.8vw,22px)", display:"flex", flexDirection:"column", outline: editMode ? "2px dashed rgba(124,90,245,0.5)" : "none", cursor: editMode ? "move" : "default" }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:"clamp(8px,1.2vh,14px)", flexShrink:0 }}>
-                  <div style={{ fontSize:"clamp(14px,1.7vw,22px)", fontWeight:700, letterSpacing:"clamp(2px,0.3vw,4px)", textTransform:"uppercase", color:T.text }}>{cal.month}</div>
-                  <div style={{ fontSize:"clamp(11px,1.3vw,17px)", color:T.muted }}>{cal.year}</div>
+              {/* Calendar — grid rows sized in `fr` units (not fixed px/vh) so a
+                  6-row month never overflows its card, whatever the viewport. */}
+              <div style={{ ...card, padding:"clamp(8px,1.4vh,20px) clamp(12px,1.8vw,22px)", display:"flex", flexDirection:"column", minHeight:0, overflow:"hidden" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:"clamp(4px,0.8vh,12px)", flexShrink:0 }}>
+                  <div style={{ fontSize:"clamp(13px,min(1.7vw,2vh),22px)", fontWeight:700, letterSpacing:"clamp(2px,0.3vw,4px)", textTransform:"uppercase", color:T.text }}>{cal.month}</div>
+                  <div style={{ fontSize:"clamp(10px,min(1.3vw,1.5vh),17px)", color:T.muted }}>{cal.year}</div>
                 </div>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:"clamp(2px,0.3vw,5px)", flex:1, alignContent:"start" }}>
+                <div style={{ flex:1, display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gridTemplateRows:`auto repeat(${Math.max(1, Math.ceil(cal.days.length / 7))}, 1fr)`, gap:"clamp(1px,0.3vh,5px)", minHeight:0 }}>
                   {["Su","Mo","Tu","We","Th","Fr","Sa"].map(h => (
-                    <div key={h} style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"clamp(20px,2.2vh,28px)", fontSize:"clamp(9px,1vw,13px)", color:T.muted, fontWeight:600 }}>{h}</div>
+                    <div key={h} style={{ display:"flex", alignItems:"center", justifyContent:"center", fontSize:"clamp(8px,min(1vw,1.1vh),13px)", color:T.muted, fontWeight:600 }}>{h}</div>
                   ))}
                   {cal.days.map((d, i) => (
-                    <div key={i} style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"clamp(34px,4vh,52px)", fontSize:"clamp(14px,1.7vw,22px)", borderRadius:"clamp(7px,0.8vw,12px)", color: d.num ? (d.isToday ? "#fff" : T.sub) : "transparent", background: d.isToday ? "rgba(124,90,245,0.85)" : "transparent", fontWeight: d.isToday ? 700 : 400, boxShadow: d.isToday ? "0 0 18px rgba(124,90,245,0.6)" : "none" }}>{d.num}</div>
+                    <div key={i} style={{ display:"flex", alignItems:"center", justifyContent:"center", fontSize:"clamp(10px,min(1.7vw,2.4vh),22px)", borderRadius:"clamp(6px,0.8vw,12px)", color: d.num ? (d.isToday ? "#fff" : T.sub) : "transparent", background: d.isToday ? "rgba(124,90,245,0.85)" : "transparent", fontWeight: d.isToday ? 700 : 400, boxShadow: d.isToday ? "0 0 18px rgba(124,90,245,0.6)" : "none" }}>{d.num}</div>
                   ))}
                 </div>
               </div>
+            </div>
+          </div>
 
-              {/* Todo sections — tap card to open popup (disabled while editing layout) */}
-              {(dockSections.length === 0
-                ? [(
-                  <div key="todo-empty" style={{ ...card, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, padding:16, outline: editMode ? "2px dashed rgba(124,90,245,0.5)" : "none", cursor: editMode ? "move" : "default" }}>
-                    <span style={{ fontSize:28 }}>📝</span>
-                    <p style={{ fontSize:12, color:T.muted, textAlign:"center", lineHeight:1.5 }}>
-                      Create sections in Quick Notes to see them here
-                    </p>
-                    <a href="/personal/notes" style={{ fontSize:11, color:"#7c5af5", textDecoration:"none" }}>Open Quick Notes →</a>
+          {/* RIGHT TODO SIDEBAR ~30% — tap card to open popup */}
+          <div style={{ flex:"0 0 30%", display:"flex", flexDirection:"column", gap:10, minWidth:0, minHeight:0, overflow:"hidden" }}>
+            {dockSections.length === 0 ? (
+              <div style={{ ...card, flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, padding:16 }}>
+                <span style={{ fontSize:28 }}>📝</span>
+                <p style={{ fontSize:12, color:T.muted, textAlign:"center", lineHeight:1.5 }}>
+                  Create sections in Quick Notes to see them here
+                </p>
+                <a href="/personal/notes" style={{ fontSize:11, color:"#7c5af5", textDecoration:"none" }}>Open Quick Notes →</a>
+              </div>
+            ) : dockSections.map(section => {
+              const items = getSectionItems(section.id);
+              const color = section.color;
+              const emoji = section.icon === "GraduationCap" ? "🎓" : section.icon === "Building" ? "🏢" : section.icon === "Star" ? "⭐" : "📋";
+              return (
+                <div
+                  key={section.id}
+                  onClick={() => setTodoPopup(section.id)}
+                  style={{ ...card, flex:1, display:"flex", flexDirection:"column", overflow:"hidden", minHeight:0, cursor:"pointer" }}
+                >
+                  {/* Section header */}
+                  <div style={{ padding:"14px 16px 10px", borderBottom:`1px solid ${T.divider}`, flexShrink:0, display:"flex", alignItems:"center", gap:8 }}>
+                    <span style={{ fontSize:18 }}>{emoji}</span>
+                    <span style={{ fontSize:"clamp(13px,1.4vw,18px)", fontWeight:700, color, letterSpacing:"0.5px" }}>{section.title}</span>
+                    <span style={{ marginLeft:"auto", fontSize:"clamp(10px,1vw,13px)", color:T.muted }}>{items.filter(t=>!t.completed).length} left</span>
+                    <span style={{ fontSize:12, color:T.muted, opacity:0.45 }}>▶</span>
                   </div>
-                )]
-                : dockSections.map(section => {
-                  const items = getSectionItems(section.id);
-                  const color = section.color;
-                  const emoji = section.icon === "GraduationCap" ? "🎓" : section.icon === "Building" ? "🏢" : section.icon === "Star" ? "⭐" : "📋";
-                  return (
-                    <div
-                      key={`todo-${section.id}`}
-                      onClick={editMode ? undefined : () => setTodoPopup(section.id)}
-                      style={{ ...card, display:"flex", flexDirection:"column", overflow:"hidden", cursor: editMode ? "move" : "pointer", outline: editMode ? "2px dashed rgba(124,90,245,0.5)" : "none" }}
-                    >
-                      {/* Section header */}
-                      <div style={{ padding:"14px 16px 10px", borderBottom:`1px solid ${T.divider}`, flexShrink:0, display:"flex", alignItems:"center", gap:8 }}>
-                        <span style={{ fontSize:18 }}>{emoji}</span>
-                        <span style={{ fontSize:"clamp(13px,1.4vw,18px)", fontWeight:700, color, letterSpacing:"0.5px" }}>{section.title}</span>
-                        <span style={{ marginLeft:"auto", fontSize:"clamp(10px,1vw,13px)", color:T.muted }}>{items.filter(t=>!t.completed).length} left</span>
-                        <span style={{ fontSize:12, color:T.muted, opacity:0.45 }}>▶</span>
-                      </div>
 
-                      {/* Preview list */}
-                      <div style={{ flex:1, padding:"8px 14px 10px", display:"flex", flexDirection:"column", gap:6, overflow:"hidden" }}>
-                        {items.length === 0 && (
-                          <div style={{ fontSize:"clamp(11px,1.1vw,14px)", color:T.muted, textAlign:"center", marginTop:18, opacity:0.5 }}>Tap to add tasks</div>
-                        )}
-                        {items.slice(0, 7).map(item => (
-                          <div key={item.id} style={{ display:"flex", alignItems:"center", gap:8 }}>
-                            <div style={{ flexShrink:0, width:14, height:14, borderRadius:4, border:`1.5px solid ${item.completed ? color : T.border}`, background: item.completed ? color : "transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                              {item.completed && <span style={{ color:"#fff", fontSize:9, lineHeight:1 }}>✓</span>}
-                            </div>
-                            <span style={{ fontSize:"clamp(13px,1.4vw,17px)", color: item.completed ? T.todoDoneTxt : T.text, textDecoration: item.completed ? "line-through" : "none", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                              {item.text}
-                            </span>
-                          </div>
-                        ))}
-                        {items.length > 7 && (
-                          <div style={{ fontSize:"clamp(10px,1vw,12px)", color:T.muted, opacity:0.4, marginTop:2 }}>+{items.length - 7} more…</div>
-                        )}
+                  {/* Preview list */}
+                  <div style={{ flex:1, padding:"8px 14px 10px", display:"flex", flexDirection:"column", gap:6, overflow:"hidden" }}>
+                    {items.length === 0 && (
+                      <div style={{ fontSize:"clamp(11px,1.1vw,14px)", color:T.muted, textAlign:"center", marginTop:18, opacity:0.5 }}>Tap to add tasks</div>
+                    )}
+                    {items.slice(0, 7).map(item => (
+                      <div key={item.id} style={{ display:"flex", alignItems:"center", gap:8 }}>
+                        <div style={{ flexShrink:0, width:14, height:14, borderRadius:4, border:`1.5px solid ${item.completed ? color : T.border}`, background: item.completed ? color : "transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                          {item.completed && <span style={{ color:"#fff", fontSize:9, lineHeight:1 }}>✓</span>}
+                        </div>
+                        <span style={{ fontSize:"clamp(13px,1.4vw,17px)", color: item.completed ? T.todoDoneTxt : T.text, textDecoration: item.completed ? "line-through" : "none", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                          {item.text}
+                        </span>
                       </div>
-                    </div>
-                  );
-                })
-              )}
-            </ResponsiveGridLayout>
+                    ))}
+                    {items.length > 7 && (
+                      <div style={{ fontSize:"clamp(10px,1vw,12px)", color:T.muted, opacity:0.4, marginTop:2 }}>+{items.length - 7} more…</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* ── FULL-WIDTH DOCK BANNER ────────────────────────────────────────── */}
-        <div style={{ ...card, margin:"10px 14px 14px", flexShrink:0, height:"clamp(78px,9vh,110px)", display:"flex", alignItems:"center", justifyContent:"center", gap:"clamp(4px,1.8vw,22px)", padding:"0 clamp(14px,2.5vw,32px)" }}>
+        {/* ── FULL-WIDTH DOCK BANNER — shortcuts, mute last on the right ──────── */}
+        <div style={{ ...card, margin:"8px 14px 12px", flexShrink:0, height:"clamp(60px,8vh,100px)", display:"flex", alignItems:"center", justifyContent:"center", gap:"clamp(4px,1.8vw,22px)", padding:"0 clamp(14px,2.5vw,32px)" }}>
           {SHORTCUTS.map(s => (
             <button
               key={s.label}
@@ -767,6 +672,35 @@ export default function IpadDockPage() {
               <div style={{ fontSize:"clamp(8px,0.9vw,12px)", color:T.muted, whiteSpace:"nowrap" }}>{s.label}</div>
             </button>
           ))}
+
+          <button
+            onClick={handleMute}
+            title={muteOffline ? "Mute server offline" : muted ? "Unmute" : "Mute"}
+            style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"clamp(3px,0.5vh,6px)", background:"none", border:"none", color:T.text, padding:"6px clamp(6px,1.2vw,14px)", borderRadius:14, cursor:"pointer", WebkitTapHighlightColor:"transparent", transition:"transform 0.15s ease", touchAction:"manipulation" }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.18) translateY(-5px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "scale(1) translateY(0)"; }}
+          >
+            <div
+              style={{
+                width:"clamp(40px,5.2vw,64px)", height:"clamp(40px,5.2vw,64px)", borderRadius:"clamp(10px,1.2vw,16px)",
+                background: muteOffline ? "rgba(255,255,255,0.03)" : muted ? "rgba(248,113,113,0.18)" : T.inputBg,
+                border:     muteOffline ? "1px solid rgba(255,255,255,0.06)" : muted ? "1px solid rgba(248,113,113,0.45)" : `1px solid ${T.border}`,
+                display:"flex", alignItems:"center", justifyContent:"center",
+                animation: (!muteOffline && muted) ? "mute-ring 2s ease-in-out infinite" : "none",
+                opacity: muteOffline ? 0.45 : 1,
+              }}
+            >
+              {muteOffline
+                ? <WifiOff size={22} color="rgba(255,255,255,0.3)" />
+                : muted
+                  ? <VolumeX size={24} color="#f87171" />
+                  : <Volume2 size={24} color={T.text} />
+              }
+            </div>
+            <div style={{ fontSize:"clamp(8px,0.9vw,12px)", color:T.muted, whiteSpace:"nowrap" }}>
+              {muteOffline ? "Offline" : muted ? "Muted" : "Mute"}
+            </div>
+          </button>
         </div>
 
       </div>
