@@ -63,14 +63,58 @@ const ZONES = [
   { label: "EST", city: "New York",    tz: "America/New_York",    color: "#f472b6", glow: "rgba(244,114,182,0.55)" },
 ];
 
+// ── Brand icons (inline SVG, real logo marks instead of generic emoji) ─────
+function GoogleGIcon() {
+  return (
+    <svg width="62%" height="62%" viewBox="0 0 48 48">
+      <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12 c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24 c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+      <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039 l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+      <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36 c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+      <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571 c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+    </svg>
+  );
+}
+
+function YouTubeIcon() {
+  return (
+    <svg width="70%" height="70%" viewBox="0 0 24 24">
+      <path fill="#FF0000" d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814z"/>
+      <path fill="#FFFFFF" d="M9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+    </svg>
+  );
+}
+
+function GmailIcon() {
+  return (
+    <svg width="66%" height="66%" viewBox="0 0 48 48">
+      <path fill="#4CAF50" d="M45,16.2l-5,2.75l-5,4.75L35,40h7c1.657,0,3-1.343,3-3V16.2z"/>
+      <path fill="#1E88E5" d="M3,16.2l3.614,1.71L13,23.7V40H6c-1.657,0-3-1.343-3-3V16.2z"/>
+      <path fill="#E53935" d="M35,11.2v12.5l-11,8.334L13,23.7V11.2l11,8.334L35,11.2z"/>
+      <path fill="#C62828" d="M3,12.298V16.2l10,7.5V11.2L9.876,8.859C9.132,8.301,8.228,8,7.298,8h-.789C4.573,8,3,9.573,3,11.509V12.298z"/>
+      <path fill="#FBC02D" d="M45,12.298V16.2l-10,7.5V11.2l3.124-2.341C38.868,8.301,39.772,8,40.702,8h.789C43.427,8,45,9.573,45,11.509V12.298z"/>
+    </svg>
+  );
+}
+
+function YouTubeMusicIcon() {
+  return (
+    <svg width="70%" height="70%" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="12" fill="#FF0000"/>
+      <circle cx="12" cy="12" r="7.7" fill="#FFFFFF"/>
+      <circle cx="12" cy="12" r="6.2" fill="#FF0000"/>
+      <path fill="#FFFFFF" d="M9.8 8.6v6.8l5.9-3.4z"/>
+    </svg>
+  );
+}
+
 // Each opens fullscreen via the local automation server's matching action
 // (see local-automation-server/actions/browser.py); `fallbackUrl` is used if
 // that server is offline, opening a normal maximized browser tab instead.
 const SHORTCUTS = [
-  { label: "Search",   emoji: "🔍", action: "open_google_search",  fallbackUrl: "https://google.com" },
-  { label: "YouTube",  emoji: "▶️",  action: "open_youtube",        fallbackUrl: "https://youtube.com" },
-  { label: "Gmail",    emoji: "✉️",  action: "open_gmail",          fallbackUrl: "https://mail.google.com" },
-  { label: "Playlist", emoji: "🎵", action: "open_tamil_playlist", fallbackUrl: "https://www.youtube.com/results?search_query=tamil+latest+hit+songs+playlist" },
+  { label: "Search",   Icon: GoogleGIcon,      action: "open_google_search",  fallbackUrl: "https://google.com" },
+  { label: "YouTube",  Icon: YouTubeIcon,      action: "open_youtube",        fallbackUrl: "https://youtube.com" },
+  { label: "Gmail",    Icon: GmailIcon,        action: "open_gmail",          fallbackUrl: "https://mail.google.com" },
+  { label: "Playlist", Icon: YouTubeMusicIcon, action: "open_tamil_playlist", fallbackUrl: "https://www.youtube.com/results?search_query=tamil+latest+hit+songs+playlist" },
 ];
 
 // App drawer — native desktop apps, categorized. These only work while the
@@ -898,8 +942,8 @@ export default function IpadDockPage() {
               onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.18) translateY(-5px)"; }}
               onMouseLeave={e => { e.currentTarget.style.transform = "scale(1) translateY(0)"; }}
             >
-              <div style={{ width:"clamp(40px,5.2vw,64px)", height:"clamp(40px,5.2vw,64px)", borderRadius:"clamp(10px,1.2vw,16px)", background:T.inputBg, border:`1px solid ${T.border}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"clamp(20px,3vw,38px)", lineHeight:1 }}>
-                {s.emoji}
+              <div style={{ width:"clamp(40px,5.2vw,64px)", height:"clamp(40px,5.2vw,64px)", borderRadius:"clamp(10px,1.2vw,16px)", background:"#ffffff", border:`1px solid ${T.border}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <s.Icon />
               </div>
               <div style={{ fontSize:"clamp(8px,0.9vw,12px)", color:T.muted, whiteSpace:"nowrap" }}>{s.label}</div>
             </button>
@@ -926,8 +970,8 @@ export default function IpadDockPage() {
               onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.18) translateY(-5px)"; }}
               onMouseLeave={e => { e.currentTarget.style.transform = "scale(1) translateY(0)"; }}
             >
-              <div style={{ width:"clamp(40px,5.2vw,64px)", height:"clamp(40px,5.2vw,64px)", borderRadius:"clamp(10px,1.2vw,16px)", background:T.inputBg, border:`1px solid ${T.border}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"clamp(20px,3vw,38px)", lineHeight:1 }}>
-                {s.emoji}
+              <div style={{ width:"clamp(40px,5.2vw,64px)", height:"clamp(40px,5.2vw,64px)", borderRadius:"clamp(10px,1.2vw,16px)", background:"#ffffff", border:`1px solid ${T.border}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <s.Icon />
               </div>
               <div style={{ fontSize:"clamp(8px,0.9vw,12px)", color:T.muted, whiteSpace:"nowrap" }}>{s.label}</div>
             </button>
