@@ -196,6 +196,53 @@ function openMain(url: string) {
   window.open(url, "_blank", "left=100,top=100,width=1366,height=900,noopener,noreferrer");
 }
 
+// ── Focus timer ─────────────────────────────────────────────────────────────
+const FOCUS_PRESETS_MIN = [20, 30, 45, 60];
+
+const FOCUS_QUOTES = [
+  "Well done! Small sessions like this add up to big progress.",
+  "Nice work — that's real, focused effort in the books.",
+  "Session complete. Momentum beats motivation every time.",
+  "You showed up and did the work. That's the whole game.",
+  "Great focus! Rest for a bit, then go again.",
+  "Done and dusted. Future you says thanks.",
+  "That's a wrap — deep work like that compounds fast.",
+  "Solid session. Progress over perfection, every time.",
+];
+
+function formatMMSS(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+// Synthesizes a short, pleasant ascending chime with the Web Audio API —
+// no audio file to ship, just a few sine-wave notes with a soft envelope.
+function playChime() {
+  try {
+    const AudioContextCtor = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new AudioContextCtor();
+    const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
+    notes.forEach((freq, i) => {
+      const start = ctx.currentTime + i * 0.14;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.22, start + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.9);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.9);
+    });
+    setTimeout(() => ctx.close(), 1500);
+  } catch {
+    // Web Audio unavailable — silently skip the chime.
+  }
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────
 type ZoneTime = { hhmm: string; ss: string; ampm: string };
 type CalDay   = { num: number | null; isToday: boolean };
@@ -271,6 +318,8 @@ const ANIM = `
   @keyframes orb-pulse { 0%,100%{transform:scale(1);opacity:0.55} 50%{transform:scale(1.15);opacity:0.75} }
   @keyframes mute-ring { 0%,100%{box-shadow:0 0 0 0 rgba(248,113,113,0)} 50%{box-shadow:0 0 0 10px rgba(248,113,113,0.22)} }
   @keyframes toast-slide { 0%{opacity:0;transform:translateY(12px)} 15%{opacity:1;transform:translateY(0)} 80%{opacity:1} 100%{opacity:0} }
+  @keyframes celebrate-pop { 0%{transform:scale(0.85);opacity:0} 60%{transform:scale(1.03);opacity:1} 100%{transform:scale(1);opacity:1} }
+  @keyframes celebrate-glow { 0%,100%{box-shadow:0 0 40px rgba(124,90,245,0.35)} 50%{box-shadow:0 0 70px rgba(124,90,245,0.65)} }
 `;
 
 // ── Dark theme tokens (always dark) ───────────────────────────────────────
@@ -376,6 +425,10 @@ export default function IpadDockPage() {
   const [showCalPopup, setShowCalPopup] = useState(false);
   const [showAppDrawer, setShowAppDrawer] = useState(false);
   const [launcherToast, setLauncherToast] = useState<string | null>(null);
+  const [showFocusPopup, setShowFocusPopup] = useState(false);
+  const [focusRemaining, setFocusRemaining] = useState<number | null>(null);
+  const [focusCustomMin, setFocusCustomMin] = useState("");
+  const [focusCompleteQuote, setFocusCompleteQuote] = useState<string | null>(null);
   const [todoPopup,  setTodoPopup]  = useState<string | null>(null);
 
   const [zoneTimes, setZoneTimes] = useState<ZoneTime[]>(ZONES.map(() => ({ hhmm: "0:00", ss: "00", ampm: "AM" })));
@@ -477,11 +530,22 @@ export default function IpadDockPage() {
         setEstToday(today);
         setCal({ month: MONTHS[est.month], year: String(est.year), days: buildMonthDays(est.year, est.month, today) });
       }
+
+      setFocusRemaining(prev => (prev === null ? null : Math.max(0, prev - 1)));
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, []);
+
+  // Fires exactly once when the focus countdown hits zero.
+  useEffect(() => {
+    if (focusRemaining !== 0) return;
+    setFocusRemaining(null);
+    setFocusCompleteQuote(FOCUS_QUOTES[Math.floor(Math.random() * FOCUS_QUOTES.length)]);
+    playChime();
+    setTimeout(() => setFocusCompleteQuote(null), 8000);
+  }, [focusRemaining]);
 
   // Weather (Open-Meteo, XHR for old iOS compat) — refetched every 10 min so the
   // 5-hour window advances forward as real hours pass, no manual scrolling needed.
@@ -526,6 +590,18 @@ export default function IpadDockPage() {
   const launchApp = async (action: string) => {
     const ok = await runAction(action);
     if (!ok) flashLauncherToast("Automation server offline — start local-automation-server/app.py");
+  };
+
+  const startFocusTimer = (minutes: number) => {
+    if (!minutes || minutes <= 0) return;
+    setFocusRemaining(Math.round(minutes * 60));
+    setFocusCustomMin("");
+    setShowFocusPopup(false);
+  };
+
+  const cancelFocusTimer = () => {
+    setFocusRemaining(null);
+    setShowFocusPopup(false);
   };
 
   if (!authed) return null;
@@ -622,6 +698,94 @@ export default function IpadDockPage() {
           </div>
         );
       })()}
+
+      {/* ── Focus timer popup ────────────────────────────────────────────────── */}
+      {showFocusPopup && (
+        <div
+          style={{ position:"fixed", inset:0, zIndex:500, background:"rgba(0,0,0,0.72)", display:"flex", alignItems:"center", justifyContent:"center" }}
+          onClick={() => setShowFocusPopup(false)}
+        >
+          <div
+            style={{ ...card, background:T.popBg, width:"min(60vw,420px)", padding:"28px 32px", boxShadow:"0 40px 100px rgba(0,0,0,0.5)" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:22 }}>
+              <span style={{ fontSize:20, fontWeight:700, color:T.text }}>Focus Timer</span>
+              <button onClick={() => setShowFocusPopup(false)} style={{ ...iconBtn({ width:36, height:36, borderRadius:10 }) }}>
+                <X size={16} color={T.iconColor} />
+              </button>
+            </div>
+
+            {focusRemaining !== null ? (
+              <>
+                <div style={{ textAlign:"center", fontFamily:"'Orbitron','Courier New',monospace", fontVariantNumeric:"tabular-nums", fontSize:52, fontWeight:900, color:T.text, margin:"12px 0 26px" }}>
+                  {formatMMSS(focusRemaining)}
+                </div>
+                <button
+                  onClick={cancelFocusTimer}
+                  style={{ width:"100%", padding:"13px 16px", borderRadius:12, background:"rgba(248,113,113,0.15)", border:"1px solid rgba(248,113,113,0.45)", color:"#f87171", fontSize:15, fontWeight:600, cursor:"pointer", touchAction:"manipulation" }}
+                >
+                  Cancel Timer
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:18 }}>
+                  {FOCUS_PRESETS_MIN.map(m => (
+                    <button
+                      key={m}
+                      onClick={() => startFocusTimer(m)}
+                      style={{ flex:"1 1 calc(50% - 5px)", padding:"14px 10px", borderRadius:12, background:"rgba(124,90,245,0.15)", border:"1px solid rgba(124,90,245,0.4)", color:"#a78bfa", fontSize:16, fontWeight:700, cursor:"pointer", touchAction:"manipulation" }}
+                    >
+                      {m} min
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display:"flex", gap:10 }}>
+                  <input
+                    type="number"
+                    min={1}
+                    placeholder="Custom minutes"
+                    value={focusCustomMin}
+                    onChange={e => setFocusCustomMin(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") startFocusTimer(Number(focusCustomMin)); }}
+                    style={{ flex:1, background:T.inputBg, border:`1px solid ${T.border}`, borderRadius:12, padding:"13px 16px", color:T.text, fontSize:16, outline:"none" }}
+                  />
+                  <button
+                    onClick={() => startFocusTimer(Number(focusCustomMin))}
+                    style={{ flexShrink:0, padding:"0 22px", borderRadius:12, background:"#7c5af5", border:"none", color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer", touchAction:"manipulation" }}
+                  >
+                    Start
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Focus timer complete — celebratory popup with quote + chime ─────── */}
+      {focusCompleteQuote && (
+        <div
+          style={{ position:"fixed", inset:0, zIndex:700, background:"rgba(0,0,0,0.78)", display:"flex", alignItems:"center", justifyContent:"center" }}
+          onClick={() => setFocusCompleteQuote(null)}
+        >
+          <div
+            style={{
+              ...card, background:T.popBg, width:"min(64vw,460px)", padding:"40px 36px", textAlign:"center", position:"relative", overflow:"hidden",
+              animation:"celebrate-pop 0.5s cubic-bezier(0.34,1.56,0.64,1), celebrate-glow 2.4s ease-in-out infinite 0.5s",
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {[[10,15],[85,10],[20,85],[90,80],[50,8],[70,50],[8,50]].map(([l,t],i) => (
+              <div key={i} style={{ position:"absolute", left:`${l}%`, top:`${t}%`, width:i%2===0?6:4, height:i%2===0?6:4, borderRadius:"50%", background:["#a78bfa","#34d399","#f472b6","#60a5fa"][i%4], animation:`twinkle ${1.6+i*0.3}s ease-in-out infinite ${i*0.2}s`, pointerEvents:"none" }} />
+            ))}
+            <div style={{ fontSize:44, marginBottom:8 }}>🎉</div>
+            <div style={{ fontSize:24, fontWeight:800, color:T.text, marginBottom:14 }}>Well done!</div>
+            <div style={{ fontSize:16, color:T.sub, lineHeight:1.5 }}>{focusCompleteQuote}</div>
+          </div>
+        </div>
+      )}
 
       {/* ── App drawer popup — native apps, categorized ─────────────────────── */}
       {showAppDrawer && (
@@ -811,17 +975,29 @@ export default function IpadDockPage() {
                 ))}
               </div>
 
-              {/* EST */}
-              <div style={{ ...card, display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center", textAlign:"center", position:"relative", overflow:"hidden", boxShadow:`0 0 80px ${ZONES[2].glow}22, inset 0 1px 0 ${ZONES[2].color}15` }}>
+              {/* EST — tap to open the focus timer */}
+              <div onClick={() => setShowFocusPopup(true)} style={{ ...card, display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center", textAlign:"center", position:"relative", overflow:"hidden", cursor:"pointer", boxShadow:`0 0 80px ${ZONES[2].glow}22, inset 0 1px 0 ${ZONES[2].color}15` }}>
                 <div style={{ position:"absolute", left:0, right:0, height:1, background:`linear-gradient(90deg,transparent,${ZONES[2].color}55,transparent)`, animation:"scan-line 8s linear infinite 4s", pointerEvents:"none" }} />
                 <div style={{ position:"absolute", top:14, right:18, width:9, height:9, borderRadius:"50%", background:ZONES[2].color, boxShadow:`0 0 16px ${ZONES[2].color}`, animation:"twinkle 2s ease-in-out infinite 1.4s" }} />
                 <div style={{ fontSize:"clamp(15px,2vw,28px)", fontWeight:800, color:ZONES[2].color, letterSpacing:"0.35em", textTransform:"uppercase", marginBottom:"clamp(10px,2vh,22px)", textShadow:`0 0 28px ${ZONES[2].color}` }}>EST</div>
-                <div style={{ display:"flex", alignItems:"baseline", gap:"clamp(4px,0.5vw,8px)" }}>
-                  <span style={{ fontFamily:"'Orbitron','Courier New',monospace", fontSize:"clamp(58px,7.5vw,110px)", fontWeight:900, letterSpacing:3, lineHeight:1, color:T.text, filter:`drop-shadow(0 0 36px ${ZONES[2].glow})`, whiteSpace:"nowrap" }}>{zoneTimes[2].hhmm}</span>
-                  <span style={{ fontFamily:"'Orbitron','Courier New',monospace", fontSize:"clamp(22px,3vw,44px)", fontWeight:700, color:ZONES[2].color, opacity:0.75, whiteSpace:"nowrap", marginBottom:"clamp(4px,0.5vh,8px)" }}>:{zoneTimes[2].ss}</span>
+                {/* Wrapping the seconds in its own relatively-positioned, fixed-width
+                    box (not centered inline with hh:mm) stops it from nudging the
+                    minutes each tick — Orbitron's digits aren't fixed-width, so
+                    without this the centered hh:mm+:ss row's total width (and
+                    therefore hh:mm's position) shifted every second. */}
+                <div style={{ position:"relative", display:"inline-block" }}>
+                  <span style={{ fontFamily:"'Orbitron','Courier New',monospace", fontVariantNumeric:"tabular-nums", fontSize:"clamp(58px,7.5vw,110px)", fontWeight:900, letterSpacing:3, lineHeight:1, color:T.text, filter:`drop-shadow(0 0 36px ${ZONES[2].glow})`, whiteSpace:"nowrap" }}>{zoneTimes[2].hhmm}</span>
+                  <span style={{ position:"absolute", left:"100%", bottom:"clamp(4px,0.5vh,8px)", marginLeft:"clamp(4px,0.5vw,8px)", width:"3ch", textAlign:"left", fontFamily:"'Orbitron','Courier New',monospace", fontVariantNumeric:"tabular-nums", fontSize:"clamp(22px,3vw,44px)", fontWeight:700, color:ZONES[2].color, opacity:0.75, whiteSpace:"nowrap" }}>:{zoneTimes[2].ss}</span>
                 </div>
                 <div style={{ fontSize:"clamp(14px,1.8vw,26px)", fontWeight:700, color:ZONES[2].color, letterSpacing:"0.2em", marginTop:"clamp(6px,1vh,14px)", opacity:0.85 }}>{zoneTimes[2].ampm}</div>
                 <div style={{ fontSize:"clamp(10px,1.2vw,16px)", color:T.muted, letterSpacing:"3px", textTransform:"uppercase", marginTop:"clamp(10px,1.8vh,20px)" }}>New York</div>
+
+                {focusRemaining !== null && (
+                  <div style={{ position:"absolute", bottom:14, right:18, display:"flex", alignItems:"center", gap:7, background:"rgba(0,0,0,0.35)", border:`1px solid ${ZONES[2].color}55`, borderRadius:999, padding:"6px 12px" }}>
+                    <span style={{ width:7, height:7, borderRadius:"50%", background:ZONES[2].color, animation:"twinkle 1.4s ease-in-out infinite", flexShrink:0 }} />
+                    <span style={{ fontFamily:"'Orbitron','Courier New',monospace", fontVariantNumeric:"tabular-nums", fontSize:14, fontWeight:700, color:ZONES[2].color }}>{formatMMSS(focusRemaining)}</span>
+                  </div>
+                )}
               </div>
             </div>
 
