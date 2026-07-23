@@ -2,10 +2,14 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Volume2, VolumeX, WifiOff, X, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Volume2, VolumeX, WifiOff, X, Plus, Trash2, LayoutGrid } from "lucide-react";
 import { useNotes } from "@/hooks/useNotes";
 
-// ── Local mute-server helpers ──────────────────────────────────────────────
+// ── Local automation-server helpers ────────────────────────────────────────
+// Same local Flask server the mute button already talks to (see
+// local-automation-server/app.py) — every dock icon below calls a named
+// action registered there (POST /run/<name>), which does the real OS-level
+// work (launching Chrome fullscreen, starting a native app, etc.).
 const MUTE_TOKEN = process.env.NEXT_PUBLIC_MUTE_API_TOKEN ?? "";
 const MUTE_BASE  = "http://localhost:5051";
 
@@ -28,6 +32,25 @@ async function muteApiFetch(path: string, method = "GET"): Promise<boolean | nul
   }
 }
 
+// Fire-and-check a named automation action. Returns whether the local server
+// actually ran it — callers use this to fall back gracefully when it's offline.
+async function runAction(name: string): Promise<boolean> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 3000);
+  try {
+    const r = await fetch(`${MUTE_BASE}/run/${name}`, {
+      method: "POST",
+      headers: { "X-API-Token": MUTE_TOKEN },
+      signal: ctrl.signal,
+    });
+    return r.ok;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ── Constants ──────────────────────────────────────────────────────────────
 const AUTH_KEY = "personal_authed";
 
@@ -40,16 +63,48 @@ const ZONES = [
   { label: "EST", city: "New York",    tz: "America/New_York",    color: "#f472b6", glow: "rgba(244,114,182,0.55)" },
 ];
 
+// Each opens fullscreen via the local automation server's matching action
+// (see local-automation-server/actions/browser.py); `fallbackUrl` is used if
+// that server is offline, opening a normal maximized browser tab instead.
 const SHORTCUTS = [
-  { label: "Google",   emoji: "🔍", url: "https://google.com" },
-  { label: "YouTube",  emoji: "▶️",  url: "https://youtube.com" },
-  { label: "Gmail",    emoji: "✉️",  url: "https://mail.google.com" },
-  { label: "Maps",     emoji: "🗺️",  url: "https://maps.google.com" },
-  { label: "Calendar", emoji: "📅",  url: "https://calendar.google.com" },
-  { label: "Drive",    emoji: "📁",  url: "https://drive.google.com" },
-  { label: "GitHub",   emoji: "💻",  url: "https://github.com" },
-  { label: "Reddit",   emoji: "🐾",  url: "https://reddit.com" },
-  { label: "Netflix",  emoji: "🎬",  url: "https://netflix.com" },
+  { label: "Search",   emoji: "🔍", action: "open_google_search",  fallbackUrl: "https://google.com" },
+  { label: "YouTube",  emoji: "▶️",  action: "open_youtube",        fallbackUrl: "https://youtube.com" },
+  { label: "Gmail",    emoji: "✉️",  action: "open_gmail",          fallbackUrl: "https://mail.google.com" },
+  { label: "Playlist", emoji: "🎵", action: "open_tamil_playlist", fallbackUrl: "https://www.youtube.com/results?search_query=tamil+latest+hit+songs+playlist" },
+];
+
+// App drawer — native desktop apps, categorized. These only work while the
+// local automation server is running (a browser can't launch a native .exe
+// on its own); action names map 1:1 to local-automation-server/actions/apps.py.
+const APP_CATEGORIES = [
+  {
+    title: "Design",
+    apps: [
+      { label: "Photoshop",     emoji: "🎨", action: "launch_photoshop" },
+      { label: "After Effects", emoji: "🎬", action: "launch_aftereffects" },
+      { label: "Lightroom",     emoji: "📷", action: "launch_lightroom" },
+    ],
+  },
+  {
+    title: "Development",
+    apps: [
+      { label: "Visual Studio", emoji: "🛠️", action: "launch_visual_studio" },
+      { label: "VS Code",       emoji: "💻", action: "launch_vscode" },
+    ],
+  },
+  {
+    title: "3D & Printing",
+    apps: [
+      { label: "Blender",  emoji: "🧊", action: "launch_blender" },
+      { label: "Creality",  emoji: "🖨️", action: "launch_creality" },
+    ],
+  },
+  {
+    title: "Productivity",
+    apps: [
+      { label: "Claude", emoji: "🤖", action: "launch_claude" },
+    ],
+  },
 ];
 
 // ── WMO weather codes ──────────────────────────────────────────────────────
@@ -275,6 +330,8 @@ export default function IpadDockPage() {
   const [showToast,   setShowToast]   = useState(false);
   const [showWeekly, setShowWeekly] = useState(false);
   const [showCalPopup, setShowCalPopup] = useState(false);
+  const [showAppDrawer, setShowAppDrawer] = useState(false);
+  const [launcherToast, setLauncherToast] = useState<string | null>(null);
   const [todoPopup,  setTodoPopup]  = useState<string | null>(null);
 
   const [zoneTimes, setZoneTimes] = useState<ZoneTime[]>(ZONES.map(() => ({ hhmm: "0:00", ss: "00", ampm: "AM" })));
@@ -404,6 +461,29 @@ export default function IpadDockPage() {
     setTimeout(() => setShowToast(false), 2500);
   };
 
+  const flashLauncherToast = (msg: string) => {
+    setLauncherToast(msg);
+    setTimeout(() => setLauncherToast(null), 2500);
+  };
+
+  // Dock shortcuts: ask the local automation server to open the site fullscreen
+  // in its own Chrome window; if that server's offline, fall back to a normal
+  // maximized browser tab so the icon still works with zero extra setup.
+  const openShortcut = async (action: string, fallbackUrl: string) => {
+    const ok = await runAction(action);
+    if (!ok) {
+      openMain(fallbackUrl);
+      flashLauncherToast("Automation server offline — opened in a browser tab instead");
+    }
+  };
+
+  // App drawer tiles: no browser fallback is possible here — launching a
+  // native .exe can only happen through the local automation server.
+  const launchApp = async (action: string) => {
+    const ok = await runAction(action);
+    if (!ok) flashLauncherToast("Automation server offline — start local-automation-server/app.py");
+  };
+
   if (!authed) return null;
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -499,6 +579,49 @@ export default function IpadDockPage() {
         );
       })()}
 
+      {/* ── App drawer popup — native apps, categorized ─────────────────────── */}
+      {showAppDrawer && (
+        <div
+          style={{ position:"fixed", inset:0, zIndex:500, background:"rgba(0,0,0,0.72)", display:"flex", alignItems:"center", justifyContent:"center" }}
+          onClick={() => setShowAppDrawer(false)}
+        >
+          <div
+            style={{ ...card, background:T.popBg, width:"min(80vw,760px)", padding:"28px 32px", boxShadow:"0 40px 100px rgba(0,0,0,0.5)", maxHeight:"80vh", overflowY:"auto" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:22 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <LayoutGrid size={22} color="#a78bfa" />
+                <span style={{ fontSize:20, fontWeight:700, color:T.text }}>Apps</span>
+              </div>
+              <button onClick={() => setShowAppDrawer(false)} style={{ ...iconBtn({ width:36, height:36, borderRadius:10 }) }}>
+                <X size={16} color={T.iconColor} />
+              </button>
+            </div>
+
+            {APP_CATEGORIES.map(cat => (
+              <div key={cat.title} style={{ marginBottom:22 }}>
+                <div style={{ fontSize:12, fontWeight:700, letterSpacing:"1.5px", textTransform:"uppercase", color:T.muted, marginBottom:12 }}>{cat.title}</div>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:14 }}>
+                  {cat.apps.map(a => (
+                    <button
+                      key={a.action}
+                      onClick={() => launchApp(a.action)}
+                      style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8, width:96, background:"none", border:"none", cursor:"pointer", padding:"10px 6px", borderRadius:14, WebkitTapHighlightColor:"transparent", touchAction:"manipulation" }}
+                    >
+                      <div style={{ width:56, height:56, borderRadius:16, background:T.inputBg, border:`1px solid ${T.border}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:28 }}>
+                        {a.emoji}
+                      </div>
+                      <div style={{ fontSize:12, color:T.sub, textAlign:"center", lineHeight:1.3 }}>{a.label}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Todo popup (Supabase-backed) ────────────────────────────────── */}
       {todoPopup && (() => {
         const section = dockSections.find(s => s.id === todoPopup);
@@ -584,6 +707,13 @@ export default function IpadDockPage() {
       {showToast && (
         <div style={{ position:"fixed", bottom:30, left:"50%", transform:"translateX(-50%)", zIndex:600, background:"rgba(30,20,60,0.92)", color:"#fff", padding:"10px 20px", borderRadius:12, fontSize:13, border:"1px solid rgba(255,255,255,0.12)", animation:"toast-slide 2.5s ease forwards", whiteSpace:"nowrap" }}>
           {muteOffline ? "🔌 Mute server offline — is Flask running on :5051?" : muted ? "🔇 Muted" : "🔊 Unmuted"}
+        </div>
+      )}
+
+      {/* ── Automation-server toast (shortcuts / app drawer) ────────────────── */}
+      {launcherToast && (
+        <div style={{ position:"fixed", bottom:30, left:"50%", transform:"translateX(-50%)", zIndex:600, background:"rgba(30,20,60,0.92)", color:"#fff", padding:"10px 20px", borderRadius:12, fontSize:13, border:"1px solid rgba(255,255,255,0.12)", animation:"toast-slide 2.5s ease forwards", whiteSpace:"nowrap" }}>
+          🔌 {launcherToast}
         </div>
       )}
 
@@ -758,12 +888,40 @@ export default function IpadDockPage() {
           </div>
         </div>
 
-        {/* ── FULL-WIDTH DOCK BANNER — shortcuts, mute last on the right ──────── */}
+        {/* ── FULL-WIDTH DOCK BANNER — shortcuts, app drawer centered, mute last ─ */}
         <div style={{ ...card, margin:"8px 14px 12px", flexShrink:0, height:"clamp(60px,8vh,100px)", display:"flex", alignItems:"center", justifyContent:"center", gap:"clamp(4px,1.8vw,22px)", padding:"0 clamp(14px,2.5vw,32px)" }}>
-          {SHORTCUTS.map(s => (
+          {SHORTCUTS.slice(0, 2).map(s => (
             <button
               key={s.label}
-              onClick={() => openMain(s.url)}
+              onClick={() => openShortcut(s.action, s.fallbackUrl)}
+              style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"clamp(3px,0.5vh,6px)", background:"none", border:"none", color:T.text, padding:"6px clamp(6px,1.2vw,14px)", borderRadius:14, cursor:"pointer", WebkitTapHighlightColor:"transparent", transition:"transform 0.15s ease", touchAction:"manipulation" }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.18) translateY(-5px)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "scale(1) translateY(0)"; }}
+            >
+              <div style={{ width:"clamp(40px,5.2vw,64px)", height:"clamp(40px,5.2vw,64px)", borderRadius:"clamp(10px,1.2vw,16px)", background:T.inputBg, border:`1px solid ${T.border}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"clamp(20px,3vw,38px)", lineHeight:1 }}>
+                {s.emoji}
+              </div>
+              <div style={{ fontSize:"clamp(8px,0.9vw,12px)", color:T.muted, whiteSpace:"nowrap" }}>{s.label}</div>
+            </button>
+          ))}
+
+          {/* App drawer — centered */}
+          <button
+            onClick={() => setShowAppDrawer(true)}
+            style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"clamp(3px,0.5vh,6px)", background:"none", border:"none", color:T.text, padding:"6px clamp(6px,1.2vw,14px)", borderRadius:14, cursor:"pointer", WebkitTapHighlightColor:"transparent", transition:"transform 0.15s ease", touchAction:"manipulation" }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.18) translateY(-5px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "scale(1) translateY(0)"; }}
+          >
+            <div style={{ width:"clamp(40px,5.2vw,64px)", height:"clamp(40px,5.2vw,64px)", borderRadius:"clamp(10px,1.2vw,16px)", background:"rgba(124,90,245,0.18)", border:"1px solid rgba(124,90,245,0.45)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <LayoutGrid size="clamp(20px,3vw,32px)" color="#a78bfa" />
+            </div>
+            <div style={{ fontSize:"clamp(8px,0.9vw,12px)", color:T.muted, whiteSpace:"nowrap" }}>Apps</div>
+          </button>
+
+          {SHORTCUTS.slice(2).map(s => (
+            <button
+              key={s.label}
+              onClick={() => openShortcut(s.action, s.fallbackUrl)}
               style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"clamp(3px,0.5vh,6px)", background:"none", border:"none", color:T.text, padding:"6px clamp(6px,1.2vw,14px)", borderRadius:14, cursor:"pointer", WebkitTapHighlightColor:"transparent", transition:"transform 0.15s ease", touchAction:"manipulation" }}
               onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.18) translateY(-5px)"; }}
               onMouseLeave={e => { e.currentTarget.style.transform = "scale(1) translateY(0)"; }}
