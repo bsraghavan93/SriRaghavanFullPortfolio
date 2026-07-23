@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Volume2, VolumeX, WifiOff, X, Plus, Trash2 } from "lucide-react";
 import { useNotes } from "@/hooks/useNotes";
@@ -31,7 +31,6 @@ async function muteApiFetch(path: string, method = "GET"): Promise<boolean | nul
 // ── Constants ──────────────────────────────────────────────────────────────
 const AUTH_KEY = "personal_authed";
 
-const DAYS       = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const DAYS_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const MONTHS     = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
@@ -101,6 +100,7 @@ function openMain(url: string) {
 // ── Types ──────────────────────────────────────────────────────────────────
 type ZoneTime = { hhmm: string; ss: string; ampm: string };
 type CalDay   = { num: number | null; isToday: boolean };
+type EstDateParts = { year: number; month: number; day: number; weekday: string };
 type HEntry   = { label: string; icon: string; tempC: number; precip: number };
 type DEntry   = { day: string; icon: string; highC: number; lowC: number; precip: number };
 type WData    = { icon: string; desc: string; tempC: number; feelsC: number; humidity: number; windMph: number; hourly: HEntry[]; daily: DEntry[] };
@@ -203,6 +203,65 @@ const iconBtn = (extra?: React.CSSProperties): React.CSSProperties => ({
   ...extra,
 });
 
+// ── EST-anchored date helpers ──────────────────────────────────────────────
+// The dashboard's "today" is defined by US Eastern time (matching the big EST
+// clock), not the device's local timezone — so the calendar rolls over exactly
+// at midnight Eastern regardless of where this page happens to be running.
+function getEstDateParts(now: Date): EstDateParts {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric", month: "numeric", day: "numeric", weekday: "long",
+  }).formatToParts(now);
+  const get = (t: string) => parts.find(p => p.type === t)?.value ?? "0";
+  return {
+    year:    Number(get("year")),
+    month:   Number(get("month")) - 1, // 0-indexed, to match MONTHS/Date conventions
+    day:     Number(get("day")),
+    weekday: get("weekday"),
+  };
+}
+
+function buildMonthDays(year: number, month: number, today: { year: number; month: number; day: number }): CalDay[] {
+  const firstDow = new Date(year, month, 1).getDay();
+  const total    = new Date(year, month + 1, 0).getDate();
+  const days: CalDay[] = [];
+  for (let i = 0; i < firstDow; i++) days.push({ num: null, isToday: false });
+  for (let d = 1; d <= total; d++) {
+    days.push({ num: d, isToday: year === today.year && month === today.month && d === today.day });
+  }
+  return days;
+}
+
+// Reused by both the dashboard's mini calendar and the 3-month popup — weekend
+// columns (Su/Sa, index 0/6) render in red so they're distinguishable at a glance.
+function MonthGrid({ days, cellFont, headerFont, gap }: { days: CalDay[]; cellFont: string; headerFont: string; gap: string }) {
+  const weekRows = Math.max(1, Math.ceil(days.length / 7));
+  return (
+    <div style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gridTemplateRows: `auto repeat(${weekRows}, 1fr)`, gap, minHeight: 0 }}>
+      {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((h, i) => (
+        <div key={h} style={{ display: "flex", alignItems: "center", justifyContent: "center", fontSize: headerFont, fontWeight: 600, color: (i === 0 || i === 6) ? "#f87171" : T.muted }}>{h}</div>
+      ))}
+      {days.map((d, i) => {
+        const weekend = i % 7 === 0 || i % 7 === 6;
+        return (
+          <div
+            key={i}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center", fontSize: cellFont, borderRadius: "clamp(6px,0.8vw,12px)",
+              color: d.num ? (d.isToday ? "#fff" : weekend ? "#f87171" : T.sub) : "transparent",
+              background: d.isToday ? "rgba(124,90,245,0.85)" : "transparent",
+              fontWeight: d.isToday ? 700 : 400,
+              boxShadow: d.isToday ? "0 0 18px rgba(124,90,245,0.6)" : "none",
+            }}
+          >
+            {d.num}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Dock section IDs resolved at runtime ──────────────────────────────────
 // We look up TruStage/UCLA sections from Supabase by title.
 // Items in the dock are ALL checklist_items from all notes in that section.
@@ -215,13 +274,16 @@ export default function IpadDockPage() {
   const [muteOffline, setMuteOffline] = useState(false);
   const [showToast,   setShowToast]   = useState(false);
   const [showWeekly, setShowWeekly] = useState(false);
+  const [showCalPopup, setShowCalPopup] = useState(false);
   const [todoPopup,  setTodoPopup]  = useState<string | null>(null);
 
   const [zoneTimes, setZoneTimes] = useState<ZoneTime[]>(ZONES.map(() => ({ hhmm: "0:00", ss: "00", ampm: "AM" })));
   const [dateInfo,  setDateInfo]  = useState({ day: "", date: "" });
   const [cal,       setCal]       = useState<{ month: string; year: string; days: CalDay[] }>({ month: "", year: "", days: [] });
+  const [estToday,  setEstToday]  = useState<{ year: number; month: number; day: number }>({ year: 0, month: 0, day: 0 });
   const [weather,   setWeather]   = useState<WData | null>(null);
   const [inputMap,  setInputMap]  = useState<Record<string, string>>({});
+  const estDateKeyRef = useRef<string>("");
 
   const { sections, notes, addItem, updateItem, deleteItem, getOrCreateDefaultNote } = useNotes();
 
@@ -287,7 +349,8 @@ export default function IpadDockPage() {
     });
   }, []);
 
-  // Clock
+  // Clock — also drives dateInfo and the calendar, both anchored to EST so the
+  // date and month grid roll over exactly at midnight Eastern, not local midnight.
   useEffect(() => {
     const tick = () => {
       const now = new Date();
@@ -302,23 +365,21 @@ export default function IpadDockPage() {
         const [tp, period = ""] = f.split(" ");
         return { hhmm: tp, ss: "", ampm: period };
       }));
-      setDateInfo({ day: DAYS[now.getDay()], date: `${MONTHS[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}` });
+
+      const est = getEstDateParts(now);
+      setDateInfo({ day: est.weekday, date: `${MONTHS[est.month]} ${est.day}, ${est.year}` });
+
+      const key = `${est.year}-${est.month}-${est.day}`;
+      if (key !== estDateKeyRef.current) {
+        estDateKeyRef.current = key;
+        const today = { year: est.year, month: est.month, day: est.day };
+        setEstToday(today);
+        setCal({ month: MONTHS[est.month], year: String(est.year), days: buildMonthDays(est.year, est.month, today) });
+      }
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, []);
-
-  // Calendar
-  useEffect(() => {
-    const now = new Date();
-    const y = now.getFullYear(), m = now.getMonth(), today = now.getDate();
-    const firstDay = new Date(y, m, 1).getDay();
-    const total    = new Date(y, m + 1, 0).getDate();
-    const days: CalDay[] = [];
-    for (let i = 0; i < firstDay; i++) days.push({ num: null, isToday: false });
-    for (let d = 1; d <= total; d++) days.push({ num: d, isToday: d === today });
-    setCal({ month: MONTHS[m], year: String(y), days });
   }, []);
 
   // Weather (Open-Meteo, XHR for old iOS compat) — refetched every 10 min so the
@@ -390,6 +451,53 @@ export default function IpadDockPage() {
           </div>
         </div>
       )}
+
+      {/* ── Calendar popup: previous | current | next month ───────────────── */}
+      {showCalPopup && (() => {
+        const months = [-1, 0, 1].map((offset) => {
+          let m = estToday.month + offset;
+          let y = estToday.year;
+          if (m < 0)  { m += 12; y -= 1; }
+          if (m > 11) { m -= 12; y += 1; }
+          return { y, m, days: buildMonthDays(y, m, estToday), isCurrent: offset === 0 };
+        });
+        return (
+          <div
+            style={{ position:"fixed", inset:0, zIndex:500, background:"rgba(0,0,0,0.72)", display:"flex", alignItems:"center", justifyContent:"center" }}
+            onClick={() => setShowCalPopup(false)}
+          >
+            <div
+              style={{ ...card, background:T.popBg, width:"min(86vw,1000px)", padding:"28px 32px", boxShadow:"0 40px 100px rgba(0,0,0,0.5)", maxHeight:"80vh", overflowY:"auto" }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:22 }}>
+                <div style={{ fontSize:20, fontWeight:700, color:T.text }}>Calendar</div>
+                <button onClick={() => setShowCalPopup(false)} style={{ ...iconBtn({ width:36, height:36, borderRadius:10 }) }}>
+                  <X size={16} color={T.iconColor} />
+                </button>
+              </div>
+              <div style={{ display:"flex", gap:24 }}>
+                {months.map(({ y, m, days, isCurrent }) => (
+                  <div
+                    key={`${y}-${m}`}
+                    style={{
+                      flex:1, minWidth:0, display:"flex", flexDirection:"column", padding:"14px 16px", borderRadius:16,
+                      background: isCurrent ? "rgba(124,90,245,0.10)" : "transparent",
+                      border: isCurrent ? "1px solid rgba(124,90,245,0.35)" : `1px solid ${T.divider}`,
+                    }}
+                  >
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:12 }}>
+                      <div style={{ fontSize:16, fontWeight:700, letterSpacing:"2px", textTransform:"uppercase", color: isCurrent ? "#a78bfa" : T.text }}>{MONTHS[m]}</div>
+                      <div style={{ fontSize:13, color:T.muted }}>{y}</div>
+                    </div>
+                    <MonthGrid days={days} cellFont="15px" headerFont="11px" gap="4px" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Todo popup (Supabase-backed) ────────────────────────────────── */}
       {todoPopup && (() => {
@@ -585,20 +693,14 @@ export default function IpadDockPage() {
               </div>
 
               {/* Calendar — grid rows sized in `fr` units (not fixed px/vh) so a
-                  6-row month never overflows its card, whatever the viewport. */}
-              <div style={{ ...card, padding:"clamp(8px,1.4vh,20px) clamp(12px,1.8vw,22px)", display:"flex", flexDirection:"column", minHeight:0, overflow:"hidden" }}>
+                  6-row month never overflows its card, whatever the viewport.
+                  Tap to open a 3-month (prev/current/next) popup. */}
+              <div onClick={() => setShowCalPopup(true)} style={{ ...card, padding:"clamp(8px,1.4vh,20px) clamp(12px,1.8vw,22px)", display:"flex", flexDirection:"column", minHeight:0, overflow:"hidden", cursor:"pointer" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:"clamp(4px,0.8vh,12px)", flexShrink:0 }}>
                   <div style={{ fontSize:"clamp(13px,min(1.7vw,2vh),22px)", fontWeight:700, letterSpacing:"clamp(2px,0.3vw,4px)", textTransform:"uppercase", color:T.text }}>{cal.month}</div>
                   <div style={{ fontSize:"clamp(10px,min(1.3vw,1.5vh),17px)", color:T.muted }}>{cal.year}</div>
                 </div>
-                <div style={{ flex:1, display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gridTemplateRows:`auto repeat(${Math.max(1, Math.ceil(cal.days.length / 7))}, 1fr)`, gap:"clamp(1px,0.3vh,5px)", minHeight:0 }}>
-                  {["Su","Mo","Tu","We","Th","Fr","Sa"].map(h => (
-                    <div key={h} style={{ display:"flex", alignItems:"center", justifyContent:"center", fontSize:"clamp(8px,min(1vw,1.1vh),13px)", color:T.muted, fontWeight:600 }}>{h}</div>
-                  ))}
-                  {cal.days.map((d, i) => (
-                    <div key={i} style={{ display:"flex", alignItems:"center", justifyContent:"center", fontSize:"clamp(10px,min(1.7vw,2.4vh),22px)", borderRadius:"clamp(6px,0.8vw,12px)", color: d.num ? (d.isToday ? "#fff" : T.sub) : "transparent", background: d.isToday ? "rgba(124,90,245,0.85)" : "transparent", fontWeight: d.isToday ? 700 : 400, boxShadow: d.isToday ? "0 0 18px rgba(124,90,245,0.6)" : "none" }}>{d.num}</div>
-                  ))}
-                </div>
+                <MonthGrid days={cal.days} cellFont="clamp(10px,min(1.7vw,2.4vh),22px)" headerFont="clamp(8px,min(1vw,1.1vh),13px)" gap="clamp(1px,0.3vh,5px)" />
               </div>
             </div>
           </div>
