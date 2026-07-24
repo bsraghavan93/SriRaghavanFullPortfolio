@@ -63,6 +63,54 @@ const ZONES = [
   { label: "EST", city: "New York",    tz: "America/New_York",    color: "#f472b6", glow: "rgba(244,114,182,0.55)" },
 ];
 
+// The two mini clock slots (left card) are user-selectable from this catalog;
+// the big EST clock stays fixed. Each slot keeps its own fixed color
+// (matching ZONES[0]/[1] above) regardless of which city is picked — only
+// the city/timezone changes. The on-screen zone label (PST, GMT+2, IST, …)
+// is derived live from the timezone via Intl rather than stored here, so it
+// stays correct across DST changes instead of being a fixed, eventually-wrong string.
+type WorldClockCity = { city: string; country: string; tz: string };
+const WORLD_CLOCK_CATALOG: WorldClockCity[] = [
+  { city: "Los Angeles",  country: "USA",           tz: "America/Los_Angeles" },
+  { city: "Denver",       country: "USA",           tz: "America/Denver" },
+  { city: "Chicago",      country: "USA",           tz: "America/Chicago" },
+  { city: "New York",     country: "USA",           tz: "America/New_York" },
+  { city: "Toronto",      country: "Canada",        tz: "America/Toronto" },
+  { city: "Mexico City",  country: "Mexico",        tz: "America/Mexico_City" },
+  { city: "São Paulo",    country: "Brazil",        tz: "America/Sao_Paulo" },
+  { city: "London",       country: "UK",            tz: "Europe/London" },
+  { city: "Paris",        country: "France",        tz: "Europe/Paris" },
+  { city: "Berlin",       country: "Germany",       tz: "Europe/Berlin" },
+  { city: "Athens",       country: "Greece",        tz: "Europe/Athens" },
+  { city: "Moscow",       country: "Russia",        tz: "Europe/Moscow" },
+  { city: "Dubai",        country: "UAE",           tz: "Asia/Dubai" },
+  { city: "Mumbai",       country: "India",         tz: "Asia/Kolkata" },
+  { city: "Chennai",      country: "India",         tz: "Asia/Kolkata" },
+  { city: "Dhaka",        country: "Bangladesh",    tz: "Asia/Dhaka" },
+  { city: "Bangkok",      country: "Thailand",      tz: "Asia/Bangkok" },
+  { city: "Singapore",    country: "Singapore",     tz: "Asia/Singapore" },
+  { city: "Hong Kong",    country: "China",         tz: "Asia/Hong_Kong" },
+  { city: "Shanghai",     country: "China",         tz: "Asia/Shanghai" },
+  { city: "Tokyo",        country: "Japan",         tz: "Asia/Tokyo" },
+  { city: "Seoul",        country: "South Korea",   tz: "Asia/Seoul" },
+  { city: "Sydney",       country: "Australia",     tz: "Australia/Sydney" },
+  { city: "Melbourne",    country: "Australia",     tz: "Australia/Melbourne" },
+  { city: "Auckland",     country: "New Zealand",   tz: "Pacific/Auckland" },
+  { city: "Cairo",        country: "Egypt",         tz: "Africa/Cairo" },
+  { city: "Johannesburg", country: "South Africa",  tz: "Africa/Johannesburg" },
+  { city: "Lagos",        country: "Nigeria",       tz: "Africa/Lagos" },
+];
+const WORLD_CLOCK_STORAGE_KEY = "ipaddock_world_clocks_v1";
+const WORLD_CLOCK_SLOT_STYLE = [
+  { color: "#a78bfa", glow: "rgba(167,139,250,0.55)" },
+  { color: "#34d399", glow: "rgba(52,211,153,0.55)" },
+];
+
+function getTzAbbr(tz: string, now: Date): string {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "short" }).formatToParts(now);
+  return parts.find(p => p.type === "timeZoneName")?.value ?? "";
+}
+
 // ── Brand icons (inline SVG, real logo marks instead of generic emoji) ─────
 function GoogleGIcon() {
   return (
@@ -256,7 +304,7 @@ function playChime() {
 }
 
 // ── Types ──────────────────────────────────────────────────────────────────
-type ZoneTime = { hhmm: string; ss: string; ampm: string };
+type ZoneTime = { hhmm: string; ss: string; ampm: string; abbr: string };
 type CalDay   = { num: number | null; isToday: boolean };
 type EstDateParts = { year: number; month: number; day: number; weekday: string };
 type HEntry   = { label: string; icon: string; tempC: number; precip: number };
@@ -277,9 +325,15 @@ function parseWeather(raw: unknown): WData {
   const hrly = d.hourly  as Record<string, unknown[]>;
   const dly  = d.daily   as Record<string, unknown[]>;
 
+  // The API request pins &timezone=America/New_York, so hourly.time is labeled
+  // in Eastern wall-clock time regardless of where this page happens to run.
+  // Matching it against the device's own local hour (as this used to) only
+  // worked by coincidence when the device's system timezone was also Eastern -
+  // anywhere else, the match always failed, idx fell back to 0, and the
+  // hourly row got permanently stuck showing the forecast's first hours
+  // instead of advancing with real time.
   const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const curKey = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:00`;
+  const curKey = getEstHourKey(now);
   const times  = hrly.time as string[];
   let idx = times.findIndex(t => t === curKey);
   if (idx < 0) idx = 0;
@@ -381,6 +435,19 @@ function getEstDateParts(now: Date): EstDateParts {
   };
 }
 
+// Same EST-anchoring as getEstDateParts, but formatted to match Open-Meteo's
+// hourly.time keys (YYYY-MM-DDTHH:00) so the current-hour lookup in
+// parseWeather works regardless of the device's own timezone.
+function getEstHourKey(now: Date): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23",
+  }).formatToParts(now);
+  const get = (t: string) => parts.find(p => p.type === t)?.value ?? "00";
+  const hour = get("hour") === "24" ? "00" : get("hour");
+  return `${get("year")}-${get("month")}-${get("day")}T${hour}:00`;
+}
+
 function buildMonthDays(year: number, month: number, today: { year: number; month: number; day: number }): CalDay[] {
   const firstDow = new Date(year, month, 1).getDay();
   const total    = new Date(year, month + 1, 0).getDate();
@@ -444,7 +511,11 @@ export default function IpadDockPage() {
   const [focusCompleteQuote, setFocusCompleteQuote] = useState<string | null>(null);
   const [todoPopup,  setTodoPopup]  = useState<string | null>(null);
 
-  const [zoneTimes, setZoneTimes] = useState<ZoneTime[]>(ZONES.map(() => ({ hhmm: "0:00", ss: "00", ampm: "AM" })));
+  const [zoneTimes, setZoneTimes] = useState<ZoneTime[]>(ZONES.map(() => ({ hhmm: "0:00", ss: "00", ampm: "AM", abbr: "" })));
+  const [worldClocks, setWorldClocks] = useState<[WorldClockCity, WorldClockCity]>([WORLD_CLOCK_CATALOG[0], WORLD_CLOCK_CATALOG[2]]);
+  const worldClocksRef = useRef(worldClocks);
+  const [clockPickerSlot, setClockPickerSlot] = useState<number | null>(null);
+  const [clockPickerSearch, setClockPickerSearch] = useState("");
   const [dateInfo,  setDateInfo]  = useState({ day: "", date: "" });
   const [cal,       setCal]       = useState<{ month: string; year: string; days: CalDay[] }>({ month: "", year: "", days: [] });
   const [estToday,  setEstToday]  = useState<{ year: number; month: number; day: number }>({ year: 0, month: 0, day: 0 });
@@ -516,21 +587,52 @@ export default function IpadDockPage() {
     });
   }, []);
 
+  // Keep a ref in sync with the world-clock selection so the tick effect below
+  // (mount-only deps) always reads the latest picked cities without needing
+  // to restart its interval every time the user changes a slot.
+  useEffect(() => { worldClocksRef.current = worldClocks; }, [worldClocks]);
+
+  // Load saved world-clock picks once on mount; persist on every change.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(WORLD_CLOCK_STORAGE_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw) as WorldClockCity[];
+        if (Array.isArray(saved) && saved.length === 2 && saved[0]?.tz && saved[1]?.tz) {
+          setWorldClocks([saved[0], saved[1]]);
+        }
+      }
+    } catch {}
+  }, []);
+
+  const selectWorldClock = (slot: number, entry: WorldClockCity) => {
+    setWorldClocks(prev => {
+      const next: [WorldClockCity, WorldClockCity] = [...prev];
+      next[slot] = entry;
+      try { localStorage.setItem(WORLD_CLOCK_STORAGE_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+    setClockPickerSlot(null);
+    setClockPickerSearch("");
+  };
+
   // Clock — also drives dateInfo and the calendar, both anchored to EST so the
   // date and month grid roll over exactly at midnight Eastern, not local midnight.
   useEffect(() => {
     const tick = () => {
       const now = new Date();
-      setZoneTimes(ZONES.map((z, i) => {
+      const tzList = [worldClocksRef.current[0].tz, worldClocksRef.current[1].tz, ZONES[2].tz];
+      setZoneTimes(tzList.map((tz, i) => {
+        const abbr = getTzAbbr(tz, now);
         if (i === 2) {
-          const f = new Intl.DateTimeFormat("en-US", { timeZone: z.tz, hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true }).format(now);
+          const f = new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true }).format(now);
           const [tp, period = ""] = f.split(" ");
           const s = tp.split(":");
-          return { hhmm: `${s[0]}:${s[1]}`, ss: s[2] || "00", ampm: period };
+          return { hhmm: `${s[0]}:${s[1]}`, ss: s[2] || "00", ampm: period, abbr };
         }
-        const f = new Intl.DateTimeFormat("en-US", { timeZone: z.tz, hour: "numeric", minute: "2-digit", hour12: true }).format(now);
+        const f = new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit", hour12: true }).format(now);
         const [tp, period = ""] = f.split(" ");
-        return { hhmm: tp, ss: "", ampm: period };
+        return { hhmm: tp, ss: "", ampm: period, abbr };
       }));
 
       const est = getEstDateParts(now);
@@ -734,6 +836,63 @@ export default function IpadDockPage() {
                 >
                   <ChevronRight size={20} color={T.iconColor} />
                 </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── World clock picker — pick a city for the PST/CST slot ───────────── */}
+      {clockPickerSlot !== null && (() => {
+        const filtered = WORLD_CLOCK_CATALOG.filter(c => {
+          const q = clockPickerSearch.trim().toLowerCase();
+          if (!q) return true;
+          return c.city.toLowerCase().includes(q) || c.country.toLowerCase().includes(q);
+        });
+        return (
+          <div
+            style={{ position:"fixed", inset:0, zIndex:500, background:"rgba(0,0,0,0.72)", display:"flex", alignItems:"center", justifyContent:"center" }}
+            onClick={() => { setClockPickerSlot(null); setClockPickerSearch(""); }}
+          >
+            <div
+              style={{ ...card, background:T.popBg, width:"min(60vw,440px)", maxHeight:"78vh", display:"flex", flexDirection:"column", padding:"26px 28px", boxShadow:"0 40px 100px rgba(0,0,0,0.5)" }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+                <span style={{ fontSize:20, fontWeight:700, color:T.text }}>Choose a city</span>
+                <button onClick={() => { setClockPickerSlot(null); setClockPickerSearch(""); }} style={{ ...iconBtn({ width:36, height:36, borderRadius:10 }) }}>
+                  <X size={16} color={T.iconColor} />
+                </button>
+              </div>
+              <input
+                autoFocus
+                value={clockPickerSearch}
+                onChange={e => setClockPickerSearch(e.target.value)}
+                placeholder="Search city or country…"
+                style={{ background:T.inputBg, border:`1px solid ${T.border}`, borderRadius:12, padding:"12px 16px", color:T.text, fontSize:15, outline:"none", marginBottom:14, flexShrink:0 }}
+              />
+              <div style={{ flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:2 }}>
+                {filtered.length === 0 && (
+                  <div style={{ fontSize:14, color:T.muted, textAlign:"center", marginTop:20 }}>No matches</div>
+                )}
+                {filtered.map(entry => {
+                  const isSelected = worldClocks[clockPickerSlot].tz === entry.tz && worldClocks[clockPickerSlot].city === entry.city;
+                  return (
+                    <button
+                      key={`${entry.city}-${entry.tz}`}
+                      onClick={() => selectWorldClock(clockPickerSlot, entry)}
+                      style={{
+                        display:"flex", justifyContent:"space-between", alignItems:"center", width:"100%", textAlign:"left",
+                        padding:"12px 14px", borderRadius:10, background: isSelected ? "rgba(124,90,245,0.15)" : "transparent",
+                        border: isSelected ? "1px solid rgba(124,90,245,0.4)" : "1px solid transparent",
+                        cursor:"pointer", touchAction:"manipulation",
+                      }}
+                    >
+                      <span style={{ fontSize:15, fontWeight:600, color: isSelected ? "#a78bfa" : T.text }}>{entry.city}</span>
+                      <span style={{ fontSize:12, color:T.muted }}>{entry.country}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -1002,16 +1161,20 @@ export default function IpadDockPage() {
             {/* CLOCKS: PST+CST stacked | EST big */}
             <div style={{ flex:"1.3", display:"grid", gridTemplateColumns:"0.6fr 1fr", gap:10, minHeight:0 }}>
 
-              {/* PST + CST */}
+              {/* PST + CST — tap either to pick a different city's clock */}
               <div style={{ ...card, display:"flex", flexDirection:"column", overflow:"hidden", position:"relative" }}>
                 {[0,1].map((i) => (
-                  <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center", textAlign:"center", padding:"14px 16px", borderBottom: i === 0 ? `1px solid ${T.border}` : "none", position:"relative", overflow:"hidden" }}>
-                    <div style={{ position:"absolute", left:0, right:0, height:1, background:`linear-gradient(90deg,transparent,${ZONES[i].color}55,transparent)`, animation:`scan-line ${6+i}s linear infinite ${i*2}s`, pointerEvents:"none" }} />
-                    <div style={{ position:"absolute", top:10, right:12, width:6, height:6, borderRadius:"50%", background:ZONES[i].color, boxShadow:`0 0 10px ${ZONES[i].color}`, animation:`twinkle 2s ease-in-out infinite ${i*0.7}s` }} />
-                    <div style={{ fontSize:"clamp(10px,1.3vw,17px)", fontWeight:800, color:ZONES[i].color, letterSpacing:"0.32em", textTransform:"uppercase", marginBottom:6, textShadow:`0 0 18px ${ZONES[i].color}` }}>{ZONES[i].label}</div>
-                    <div style={{ fontFamily:"'Orbitron','Courier New',monospace", fontSize:"clamp(30px,3.8vw,58px)", fontWeight:900, letterSpacing:2, lineHeight:1, color:T.text, filter:`drop-shadow(0 0 20px ${ZONES[i].glow})`, whiteSpace:"nowrap" }}>{zoneTimes[i].hhmm}</div>
-                    <div style={{ fontSize:"clamp(10px,1.2vw,16px)", fontWeight:700, color:ZONES[i].color, letterSpacing:"0.2em", marginTop:5, opacity:0.85 }}>{zoneTimes[i].ampm}</div>
-                    <div style={{ fontSize:"clamp(9px,0.9vw,13px)", color:T.muted, letterSpacing:"2px", textTransform:"uppercase", marginTop:6 }}>{ZONES[i].city}</div>
+                  <div
+                    key={i}
+                    onClick={() => setClockPickerSlot(i)}
+                    style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center", textAlign:"center", padding:"14px 16px", borderBottom: i === 0 ? `1px solid ${T.border}` : "none", position:"relative", overflow:"hidden", cursor:"pointer" }}
+                  >
+                    <div style={{ position:"absolute", left:0, right:0, height:1, background:`linear-gradient(90deg,transparent,${WORLD_CLOCK_SLOT_STYLE[i].color}55,transparent)`, animation:`scan-line ${6+i}s linear infinite ${i*2}s`, pointerEvents:"none" }} />
+                    <div style={{ position:"absolute", top:10, right:12, width:6, height:6, borderRadius:"50%", background:WORLD_CLOCK_SLOT_STYLE[i].color, boxShadow:`0 0 10px ${WORLD_CLOCK_SLOT_STYLE[i].color}`, animation:`twinkle 2s ease-in-out infinite ${i*0.7}s` }} />
+                    <div style={{ fontSize:"clamp(10px,1.3vw,17px)", fontWeight:800, color:WORLD_CLOCK_SLOT_STYLE[i].color, letterSpacing:"0.32em", textTransform:"uppercase", marginBottom:6, textShadow:`0 0 18px ${WORLD_CLOCK_SLOT_STYLE[i].color}` }}>{zoneTimes[i].abbr}</div>
+                    <div style={{ fontFamily:"'Orbitron','Courier New',monospace", fontSize:"clamp(30px,3.8vw,58px)", fontWeight:900, letterSpacing:2, lineHeight:1, color:T.text, filter:`drop-shadow(0 0 20px ${WORLD_CLOCK_SLOT_STYLE[i].glow})`, whiteSpace:"nowrap" }}>{zoneTimes[i].hhmm}</div>
+                    <div style={{ fontSize:"clamp(10px,1.2vw,16px)", fontWeight:700, color:WORLD_CLOCK_SLOT_STYLE[i].color, letterSpacing:"0.2em", marginTop:5, opacity:0.85 }}>{zoneTimes[i].ampm}</div>
+                    <div style={{ fontSize:"clamp(9px,0.9vw,13px)", color:T.muted, letterSpacing:"2px", textTransform:"uppercase", marginTop:6 }}>{worldClocks[i].city}</div>
                   </div>
                 ))}
               </div>
