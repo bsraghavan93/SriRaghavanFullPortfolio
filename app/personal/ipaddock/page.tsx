@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Volume2, VolumeX, WifiOff, X, Plus, Trash2, LayoutGrid } from "lucide-react";
+import { ArrowLeft, Volume2, VolumeX, WifiOff, X, Plus, Trash2, LayoutGrid, ChevronLeft, ChevronRight } from "lucide-react";
 import { useNotes } from "@/hooks/useNotes";
 
 // ── Local automation-server helpers ────────────────────────────────────────
@@ -423,6 +423,7 @@ export default function IpadDockPage() {
   const [showToast,   setShowToast]   = useState(false);
   const [showWeekly, setShowWeekly] = useState(false);
   const [showCalPopup, setShowCalPopup] = useState(false);
+  const [calPopupOffset, setCalPopupOffset] = useState(0); // months from today, shifts by 3 per arrow tap
   const [showAppDrawer, setShowAppDrawer] = useState(false);
   const [launcherToast, setLauncherToast] = useState<string | null>(null);
   const [showFocusPopup, setShowFocusPopup] = useState(false);
@@ -618,33 +619,37 @@ export default function IpadDockPage() {
           onClick={() => setShowWeekly(false)}
         >
           <div
-            style={{ ...card, background:T.popBg, width:"min(78vw,720px)", padding:"28px 32px", boxShadow:"0 40px 100px rgba(0,0,0,0.5)", maxHeight:"80vh", overflowY:"auto" }}
+            style={{ ...card, background:T.popBg, width:"min(80vw,760px)", padding:"30px 34px", boxShadow:"0 40px 100px rgba(0,0,0,0.5)", maxHeight:"80vh", overflowY:"auto" }}
             onClick={e => e.stopPropagation()}
           >
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:22 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:26 }}>
               <div>
-                <div style={{ fontSize:20, fontWeight:700, color:T.text }}>7-Day Forecast</div>
-                <div style={{ fontSize:13, color:T.muted, marginTop:2 }}>Downingtown, PA</div>
+                <div style={{ fontSize:23, fontWeight:800, color:T.text }}>7-Day Forecast</div>
+                <div style={{ fontSize:15, color:T.sub, marginTop:3 }}>Downingtown, PA</div>
               </div>
-              <button onClick={() => setShowWeekly(false)} style={{ ...iconBtn({ width:36, height:36, borderRadius:10 }) }}>
-                <X size={16} color={T.iconColor} />
+              <button onClick={() => setShowWeekly(false)} style={{ ...iconBtn({ width:38, height:38, borderRadius:11 }) }}>
+                <X size={17} color={T.iconColor} />
               </button>
             </div>
             {weather?.daily.map((day, i) => (
-              <div key={i} style={{ display:"flex", alignItems:"center", gap:16, padding:"14px 0", borderBottom: i < 6 ? `1px solid ${T.divider}` : "none" }}>
-                <div style={{ width:56, fontSize:15, fontWeight:600, color:T.sub }}>{day.day}</div>
-                <div style={{ fontSize:30, width:40 }}>{day.icon}</div>
-                <div style={{ flex:1 }}>
-                  <span style={{ fontSize:19, fontWeight:700, color:T.text }}>{day.highC}°C</span>
-                  <span style={{ fontSize:12, color:T.muted }}> / {cToF(day.highC)}°F</span>
+              <div key={i} style={{ display:"flex", alignItems:"center", gap:20, padding:"18px 0", borderBottom: i < 6 ? `1px solid ${T.divider}` : "none" }}>
+                <div style={{ width:64, fontSize:18, fontWeight:700, color:T.text }}>{day.day}</div>
+                <div style={{ fontSize:36, width:48, textAlign:"center", flexShrink:0 }}>{day.icon}</div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <span style={{ fontSize:24, fontWeight:800, color:T.text }}>{day.highC}°C</span>
+                  <span style={{ fontSize:15, color:T.sub, fontWeight:500 }}> / {cToF(day.highC)}°F</span>
                 </div>
-                <div style={{ fontSize:14, color:T.muted }}>{day.lowC}°C<span style={{ fontSize:11 }}> / {cToF(day.lowC)}°F</span></div>
-                <div style={{ display:"flex", alignItems:"center", gap:5, width:80 }}>
-                  <span style={{ fontSize:14 }}>💧</span>
-                  <div style={{ flex:1, height:5, borderRadius:3, background:"rgba(96,165,250,0.18)", overflow:"hidden" }}>
-                    <div style={{ width:`${day.precip}%`, height:"100%", background:"#60a5fa", borderRadius:3 }} />
+                <div style={{ width:110, flexShrink:0 }}>
+                  <div style={{ fontSize:11, color:T.muted, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:2 }}>Low</div>
+                  <span style={{ fontSize:18, fontWeight:700, color:T.sub }}>{day.lowC}°C</span>
+                  <span style={{ fontSize:13, color:T.muted }}> / {cToF(day.lowC)}°F</span>
+                </div>
+                <div style={{ display:"flex", alignItems:"center", gap:8, width:100, flexShrink:0 }}>
+                  <span style={{ fontSize:18 }}>💧</span>
+                  <div style={{ flex:1, height:7, borderRadius:4, background:"rgba(96,165,250,0.18)", overflow:"hidden" }}>
+                    <div style={{ width:`${day.precip}%`, height:"100%", background:"#60a5fa", borderRadius:4 }} />
                   </div>
-                  <span style={{ fontSize:12, color:"#60a5fa", minWidth:28 }}>{day.precip}%</span>
+                  <span style={{ fontSize:15, fontWeight:700, color:"#60a5fa", minWidth:36 }}>{day.precip}%</span>
                 </div>
               </div>
             ))}
@@ -652,14 +657,15 @@ export default function IpadDockPage() {
         </div>
       )}
 
-      {/* ── Calendar popup: previous | current | next month ───────────────── */}
+      {/* ── Calendar popup: 3 months at a time, <> to shift by 3 months ────── */}
       {showCalPopup && (() => {
         const months = [-1, 0, 1].map((offset) => {
-          let m = estToday.month + offset;
+          let m = estToday.month + calPopupOffset + offset;
           let y = estToday.year;
-          if (m < 0)  { m += 12; y -= 1; }
-          if (m > 11) { m -= 12; y += 1; }
-          return { y, m, days: buildMonthDays(y, m, estToday), isCurrent: offset === 0 };
+          while (m < 0)  { m += 12; y -= 1; }
+          while (m > 11) { m -= 12; y += 1; }
+          const isCurrent = y === estToday.year && m === estToday.month;
+          return { y, m, days: buildMonthDays(y, m, estToday), isCurrent };
         });
         return (
           <div
@@ -672,27 +678,50 @@ export default function IpadDockPage() {
             >
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:22 }}>
                 <div style={{ fontSize:20, fontWeight:700, color:T.text }}>Calendar</div>
-                <button onClick={() => setShowCalPopup(false)} style={{ ...iconBtn({ width:36, height:36, borderRadius:10 }) }}>
-                  <X size={16} color={T.iconColor} />
-                </button>
+                <div style={{ display:"flex", gap:10 }}>
+                  {calPopupOffset !== 0 && (
+                    <button onClick={() => setCalPopupOffset(0)} style={{ ...iconBtn({ padding:"0 14px", height:36, borderRadius:10, fontSize:12 }), color:T.iconColor }}>
+                      Today
+                    </button>
+                  )}
+                  <button onClick={() => setShowCalPopup(false)} style={{ ...iconBtn({ width:36, height:36, borderRadius:10 }) }}>
+                    <X size={16} color={T.iconColor} />
+                  </button>
+                </div>
               </div>
-              <div style={{ display:"flex", gap:24 }}>
-                {months.map(({ y, m, days, isCurrent }) => (
-                  <div
-                    key={`${y}-${m}`}
-                    style={{
-                      flex:1, minWidth:0, display:"flex", flexDirection:"column", padding:"14px 16px", borderRadius:16,
-                      background: isCurrent ? "rgba(124,90,245,0.10)" : "transparent",
-                      border: isCurrent ? "1px solid rgba(124,90,245,0.35)" : `1px solid ${T.divider}`,
-                    }}
-                  >
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:12 }}>
-                      <div style={{ fontSize:16, fontWeight:700, letterSpacing:"2px", textTransform:"uppercase", color: isCurrent ? "#a78bfa" : T.text }}>{MONTHS[m]}</div>
-                      <div style={{ fontSize:13, color:T.muted }}>{y}</div>
+              <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+                <button
+                  onClick={() => setCalPopupOffset(o => o - 3)}
+                  title="Previous 3 months"
+                  style={{ ...iconBtn({ width:40, height:40, borderRadius:12, flexShrink:0 }) }}
+                >
+                  <ChevronLeft size={20} color={T.iconColor} />
+                </button>
+                <div style={{ display:"flex", gap:24, flex:1, minWidth:0 }}>
+                  {months.map(({ y, m, days, isCurrent }) => (
+                    <div
+                      key={`${y}-${m}`}
+                      style={{
+                        flex:1, minWidth:0, display:"flex", flexDirection:"column", padding:"14px 16px", borderRadius:16,
+                        background: isCurrent ? "rgba(124,90,245,0.10)" : "transparent",
+                        border: isCurrent ? "1px solid rgba(124,90,245,0.35)" : `1px solid ${T.divider}`,
+                      }}
+                    >
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:12 }}>
+                        <div style={{ fontSize:16, fontWeight:700, letterSpacing:"2px", textTransform:"uppercase", color: isCurrent ? "#a78bfa" : T.text }}>{MONTHS[m]}</div>
+                        <div style={{ fontSize:13, color:T.muted }}>{y}</div>
+                      </div>
+                      <MonthGrid days={days} cellFont="15px" headerFont="11px" gap="4px" />
                     </div>
-                    <MonthGrid days={days} cellFont="15px" headerFont="11px" gap="4px" />
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <button
+                  onClick={() => setCalPopupOffset(o => o + 3)}
+                  title="Next 3 months"
+                  style={{ ...iconBtn({ width:40, height:40, borderRadius:12, flexShrink:0 }) }}
+                >
+                  <ChevronRight size={20} color={T.iconColor} />
+                </button>
               </div>
             </div>
           </div>
@@ -1045,7 +1074,7 @@ export default function IpadDockPage() {
               {/* Calendar — grid rows sized in `fr` units (not fixed px/vh) so a
                   6-row month never overflows its card, whatever the viewport.
                   Tap to open a 3-month (prev/current/next) popup. */}
-              <div onClick={() => setShowCalPopup(true)} style={{ ...card, padding:"clamp(8px,1.4vh,20px) clamp(12px,1.8vw,22px)", display:"flex", flexDirection:"column", minHeight:0, overflow:"hidden", cursor:"pointer" }}>
+              <div onClick={() => { setCalPopupOffset(0); setShowCalPopup(true); }} style={{ ...card, padding:"clamp(8px,1.4vh,20px) clamp(12px,1.8vw,22px)", display:"flex", flexDirection:"column", minHeight:0, overflow:"hidden", cursor:"pointer" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:"clamp(4px,0.8vh,12px)", flexShrink:0 }}>
                   <div style={{ fontSize:"clamp(13px,min(1.7vw,2vh),22px)", fontWeight:700, letterSpacing:"clamp(2px,0.3vw,4px)", textTransform:"uppercase", color:T.text }}>{cal.month}</div>
                   <div style={{ fontSize:"clamp(10px,min(1.3vw,1.5vh),17px)", color:T.muted }}>{cal.year}</div>
