@@ -107,6 +107,17 @@ function YouTubeMusicIcon() {
   );
 }
 
+function ClaudeIcon() {
+  // Anthropic's sunburst mark — 8 tapered rays radiating from the center.
+  return (
+    <svg width="64%" height="64%" viewBox="0 0 24 24">
+      {Array.from({ length: 8 }, (_, i) => (
+        <rect key={i} x="11.15" y="1.5" width="1.7" height="8.5" rx="0.85" fill="#D97757" transform={`rotate(${i * 45} 12 12)`} />
+      ))}
+    </svg>
+  );
+}
+
 // Each opens fullscreen via the local automation server's matching action
 // (see local-automation-server/actions/browser.py); `fallbackUrl` is used if
 // that server is offline, opening a normal maximized browser tab instead.
@@ -115,6 +126,7 @@ const SHORTCUTS = [
   { label: "YouTube",  Icon: YouTubeIcon,      action: "open_youtube",        fallbackUrl: "https://youtube.com" },
   { label: "Gmail",    Icon: GmailIcon,        action: "open_gmail",          fallbackUrl: "https://mail.google.com" },
   { label: "Playlist", Icon: YouTubeMusicIcon, action: "open_tamil_playlist", fallbackUrl: "https://www.youtube.com/results?search_query=tamil+latest+hit+songs+playlist" },
+  { label: "Usage",    Icon: ClaudeIcon,       action: "open_claude_usage",  fallbackUrl: "https://claude.ai/new#settings/usage" },
 ];
 
 // App drawer — native desktop apps, categorized. These only work while the
