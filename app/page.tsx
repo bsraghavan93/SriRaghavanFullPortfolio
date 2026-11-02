@@ -455,8 +455,7 @@ function Hero() {
 
   return (
     <section
-      className="relative isolate min-h-[100svh] overflow-hidden flex flex-col justify-end md:justify-center"
-      style={{ background: "#0d1525" }}
+      className="relative isolate min-h-[100svh] overflow-hidden flex flex-col justify-end md:justify-center bg-[#030711] md:bg-[#0d1525]"
     >
       {/* Background video: full-bleed on desktop; on mobile it sits in the top part so the animation stays visible */}
       <video
@@ -466,7 +465,7 @@ function Hero() {
         playsInline
         preload="auto"
         onCanPlay={() => setVideoReady(true)}
-        className="absolute left-0 top-0 -z-20 w-full h-[50svh] md:h-full object-cover object-[72%_50%] md:object-center transition-opacity duration-1000"
+        className="absolute left-0 top-0 -z-20 w-full h-[56svh] md:h-full object-cover object-[74%_40%] md:object-center transition-opacity duration-1000 [mask-image:linear-gradient(to_bottom,black_55%,transparent_100%)] md:[mask-image:none]"
         style={{ opacity: videoReady ? 1 : 0 }}
         src="/videos/hero-1.mp4"
       />
@@ -482,12 +481,12 @@ function Hero() {
         className="absolute inset-0 -z-10 pointer-events-none md:hidden"
         style={{
           background:
-            "linear-gradient(to bottom, rgba(6,8,18,0.25) 0%, transparent 18%, transparent 30%, #0a0f1d 50%, #030711 100%)",
+            "linear-gradient(to bottom, rgba(6,8,18,0.35) 0%, transparent 14%)",
         }}
       />
 
-      <div className="w-full px-5 sm:px-8 md:px-14 lg:px-20 pt-[46svh] pb-16 md:pt-28 md:pb-28">
-      <div className="max-w-4xl space-y-5 md:space-y-8">
+      <div className="w-full px-5 sm:px-8 md:px-14 lg:px-20 pt-[44svh] pb-10 md:pt-28 md:pb-28">
+      <div className="max-w-4xl space-y-4 md:space-y-8">
         {/* Eyebrow */}
         <div className="flex items-center gap-3">
           <span className="h-px w-8 bg-cyan-400/50 shrink-0" />
@@ -532,7 +531,7 @@ function Hero() {
         </div>
 
         {/* Value proposition */}
-        <p className="max-w-2xl text-sm md:text-lg leading-6 md:leading-7 text-slate-200">
+        <p className="max-w-2xl text-[13px] md:text-lg leading-5 md:leading-7 text-slate-200">
           <Typed text={intro} delay={T.intro} speed={5} />
         </p>
 
@@ -540,7 +539,7 @@ function Hero() {
         <motion.div
           {...extras}
           transition={{ delay: T.extras / 1000, duration: 0.6 }}
-          className="flex flex-wrap gap-2.5 md:gap-4"
+          className="grid grid-cols-3 gap-2 md:flex md:flex-wrap md:gap-4"
         >
           {[
             { value: "94%", label: "Faster Deployments", bg: "bg-cyan-400/8", border: "border-cyan-400/20", val: "text-cyan-300", sep: "bg-cyan-400/20" },
@@ -549,11 +548,11 @@ function Hero() {
           ].map(({ value, label, bg, border, val, sep }) => (
             <div
               key={label}
-              className={`flex items-center gap-2.5 md:gap-3 px-3.5 md:px-5 py-2.5 md:py-3 rounded-2xl border ${bg} ${border}`}
+              className={`flex flex-col items-start gap-1 md:flex-row md:items-center md:gap-3 px-3 md:px-5 py-2.5 md:py-3 rounded-2xl border ${bg} ${border}`}
             >
               <span className={`font-extrabold text-xl leading-none ${val}`}>{value}</span>
-              <div className={`w-px h-6 ${sep}`} />
-              <span className="text-slate-300 text-xs leading-tight max-w-[72px]">{label}</span>
+              <div className={`hidden md:block w-px h-6 ${sep}`} />
+              <span className="text-slate-300 text-[11px] md:text-xs leading-tight md:max-w-[72px]">{label}</span>
             </div>
           ))}
         </motion.div>
@@ -585,7 +584,7 @@ function Hero() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.4, duration: 0.6 }}
-        className="absolute bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-slate-400"
+        className="absolute bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 hidden md:flex flex-col items-center gap-2 text-slate-400"
       >
         <motion.div
           animate={{ y: [0, 5, 0] }}
