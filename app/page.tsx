@@ -389,18 +389,76 @@ function Nav({ onInterests }: { onInterests: () => void }) {
   );
 }
 
+// ─── TYPEWRITER ───────────────────────────────────────────────────────────────
+// Types `text` one character at a time after `delay` ms. The full text is rendered
+// invisibly underneath so the layout doesn't shift while typing.
+function Typed({
+  text,
+  delay,
+  speed,
+  className = "",
+}: {
+  text: string;
+  delay: number;
+  speed: number;
+  className?: string;
+}) {
+  const [count, setCount] = useState(0);
+
+  React.useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    const start = setTimeout(() => {
+      interval = setInterval(() => {
+        setCount((c) => {
+          if (c >= text.length) {
+            clearInterval(interval);
+            return c;
+          }
+          return c + 1;
+        });
+      }, speed);
+    }, delay);
+    return () => {
+      clearTimeout(start);
+      clearInterval(interval);
+    };
+  }, [text, delay, speed]);
+
+  const typing = count > 0 && count < text.length;
+
+  return (
+    <span className="relative block">
+      <span className={`invisible ${className}`} aria-hidden>
+        {text}
+      </span>
+      <span className={`absolute inset-0 ${className}`} aria-label={text}>
+        {text.slice(0, count)}
+        {typing && (
+          <span className="ml-0.5 inline-block w-[0.08em] min-w-[2px] h-[0.9em] translate-y-[0.1em] bg-cyan-400 animate-pulse" />
+        )}
+      </span>
+    </span>
+  );
+}
+
 // ─── HERO ─────────────────────────────────────────────────────────────────────
 function Hero() {
   const experienceYears = useMemo(() => new Date().getFullYear() - 2015, []);
 
   const [videoReady, setVideoReady] = useState(false);
 
+  const eyebrow = `${experienceYears}+ Years · Enterprise Engineering`;
+  const intro = `${experienceYears}+ years building enterprise systems at scale — loyalty platforms, government modernization, and cloud-native microservices. I ship fast, architect for resilience, and lead teams that deliver.`;
+  // Name types first, then everything else follows in sequence.
+  const T = { name1: 300, name2: 750, eyebrow: 1250, title: 2050, tagline: 2800, intro: 3550, extras: 4700 };
+  const extras = { initial: { opacity: 0, y: 14 }, animate: { opacity: 1, y: 0 } };
+
   return (
     <section
-      className="relative isolate min-h-[100svh] overflow-hidden flex flex-col justify-center"
+      className="relative isolate min-h-[100svh] overflow-hidden flex flex-col justify-end md:justify-center"
       style={{ background: "#0d1525" }}
     >
-      {/* Background video */}
+      {/* Background video: full-bleed on desktop; on mobile it sits in the top part so the animation stays visible */}
       <video
         autoPlay
         loop
@@ -408,58 +466,82 @@ function Hero() {
         playsInline
         preload="auto"
         onCanPlay={() => setVideoReady(true)}
-        className="absolute inset-0 -z-20 h-full w-full object-cover transition-opacity duration-1000"
+        className="absolute left-0 top-0 -z-20 w-full h-[50svh] md:h-full object-cover object-[72%_50%] md:object-center transition-opacity duration-1000"
         style={{ opacity: videoReady ? 1 : 0 }}
         src="/videos/hero-1.mp4"
       />
-      {/* Legibility overlay (stronger on the left where the text sits) + fade into site bg */}
+      {/* Light left-side scrim for text legibility + fade into the site background */}
       <div
-        className="absolute inset-0 -z-10 pointer-events-none"
+        className="absolute inset-0 -z-10 pointer-events-none hidden md:block"
         style={{
           background:
-            "linear-gradient(to right, rgba(6,8,18,0.78) 0%, rgba(6,8,18,0.45) 55%, rgba(6,8,18,0.15) 100%), linear-gradient(to bottom, rgba(6,8,18,0.35) 0%, transparent 25%, transparent 70%, #030711 100%)",
+            "linear-gradient(to right, rgba(6,8,18,0.5) 0%, rgba(6,8,18,0.15) 45%, transparent 70%), linear-gradient(to bottom, transparent 80%, #030711 100%)",
+        }}
+      />
+      <div
+        className="absolute inset-0 -z-10 pointer-events-none md:hidden"
+        style={{
+          background:
+            "linear-gradient(to bottom, rgba(6,8,18,0.25) 0%, transparent 18%, transparent 30%, #0a0f1d 50%, #030711 100%)",
         }}
       />
 
-      <div className="w-full max-w-7xl mx-auto px-6 md:px-12 pt-24 pb-24 md:py-32">
-      <motion.div
-        variants={stagger}
-        initial="hidden"
-        animate="visible"
-        className="max-w-4xl space-y-6 md:space-y-8"
-      >
+      <div className="w-full px-5 sm:px-8 md:px-14 lg:px-20 pt-[46svh] pb-16 md:pt-28 md:pb-28">
+      <div className="max-w-4xl space-y-5 md:space-y-8">
         {/* Eyebrow */}
-        <motion.div variants={fadeUp} className="flex items-center gap-3">
-          <span className="h-px w-8 bg-cyan-400/50" />
-          <span className="text-xs uppercase tracking-[0.28em] text-cyan-400/80 font-medium">
-            {experienceYears}+ Years · Enterprise Engineering
-          </span>
-        </motion.div>
+        <div className="flex items-center gap-3">
+          <span className="h-px w-8 bg-cyan-400/50 shrink-0" />
+          <Typed
+            text={eyebrow}
+            delay={T.eyebrow}
+            speed={22}
+            className="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.28em] text-cyan-400/90 font-medium"
+          />
+        </div>
 
         {/* Name */}
-        <motion.div variants={fadeUp} className="space-y-0">
-          <h1 className="text-[clamp(2.8rem,8vw,5.5rem)] font-bold tracking-tight leading-[1.04] text-white">
-            Sri Raghavan
+        <div className="space-y-0">
+          <h1 className="text-[clamp(2.5rem,8vw,5.5rem)] font-bold tracking-tight leading-[1.04] text-white">
+            <Typed text="Sri Raghavan" delay={T.name1} speed={35} />
           </h1>
-          <h1 className="text-[clamp(2.8rem,8vw,5.5rem)] font-bold tracking-tight leading-[1.04] text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-violet-400">
-            Balasundaram
+          <h1 className="text-[clamp(2.5rem,8vw,5.5rem)] font-bold tracking-tight leading-[1.04]">
+            <Typed
+              text="Balasundaram"
+              delay={T.name2}
+              speed={35}
+              className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-violet-400"
+            />
           </h1>
-        </motion.div>
+        </div>
 
         {/* Title line */}
-        <motion.p variants={fadeUp} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-lg md:text-xl font-medium text-slate-300">
-          <span>Lead Full Stack .NET Engineer</span>
-          <span className="hidden md:inline text-slate-600">·</span>
-          <span className="text-slate-500 text-base font-normal">Cloud · Microservices · Architecture</span>
-        </motion.p>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <Typed
+            text="Lead Full Stack .NET Engineer"
+            delay={T.title}
+            speed={24}
+            className="text-lg md:text-xl font-medium text-slate-200"
+          />
+          <span className="hidden md:inline text-slate-500">·</span>
+          <Typed
+            text="Cloud · Microservices · Architecture"
+            delay={T.tagline}
+            speed={20}
+            className="text-sm md:text-base font-normal text-slate-300"
+          />
+        </div>
 
         {/* Value proposition */}
-        <motion.p variants={fadeUp} className="max-w-2xl text-sm md:text-lg leading-6 md:leading-7 text-slate-300">
-          {experienceYears}+ years building enterprise systems at scale — loyalty platforms, government modernization, and cloud-native microservices. I ship fast, architect for resilience, and lead teams that deliver.
-        </motion.p>
+        <p className="max-w-2xl text-sm md:text-lg leading-6 md:leading-7 text-slate-200">
+          <Typed text={intro} delay={T.intro} speed={5} />
+        </p>
 
         {/* Metric chips */}
-        <motion.div variants={fadeUp} className="flex flex-wrap gap-2.5 md:gap-4">
+        <motion.div
+          {...extras}
+          transition={{ delay: T.extras / 1000, duration: 0.6 }}
+          className="flex flex-wrap gap-2.5 md:gap-4"
+        >
           {[
             { value: "94%", label: "Faster Deployments", bg: "bg-cyan-400/8", border: "border-cyan-400/20", val: "text-cyan-300", sep: "bg-cyan-400/20" },
             { value: "70%", label: "Lower API Latency", bg: "bg-violet-400/8", border: "border-violet-400/20", val: "text-violet-300", sep: "bg-violet-400/20" },
@@ -467,17 +549,21 @@ function Hero() {
           ].map(({ value, label, bg, border, val, sep }) => (
             <div
               key={label}
-              className={`flex items-center gap-2.5 md:gap-3 px-3.5 md:px-5 py-2.5 md:py-3 rounded-2xl border backdrop-blur-sm ${bg} ${border}`}
+              className={`flex items-center gap-2.5 md:gap-3 px-3.5 md:px-5 py-2.5 md:py-3 rounded-2xl border ${bg} ${border}`}
             >
               <span className={`font-extrabold text-xl leading-none ${val}`}>{value}</span>
               <div className={`w-px h-6 ${sep}`} />
-              <span className="text-slate-400 text-xs leading-tight max-w-[72px]">{label}</span>
+              <span className="text-slate-300 text-xs leading-tight max-w-[72px]">{label}</span>
             </div>
           ))}
         </motion.div>
 
         {/* CTAs */}
-        <motion.div variants={fadeUp} className="flex flex-wrap gap-4 pt-1">
+        <motion.div
+          {...extras}
+          transition={{ delay: (T.extras + 150) / 1000, duration: 0.6 }}
+          className="flex flex-wrap gap-4 pt-1"
+        >
           <button
             onClick={() => document.getElementById("achievements")?.scrollIntoView({ behavior: "smooth" })}
             className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-6 md:px-7 py-3 md:py-3.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity duration-200 shadow-lg shadow-cyan-500/20"
@@ -491,7 +577,7 @@ function Hero() {
             Contact Me
           </button>
         </motion.div>
-      </motion.div>
+      </div>
       </div>
 
       {/* Scroll indicator */}
