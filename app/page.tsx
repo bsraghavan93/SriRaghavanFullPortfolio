@@ -456,7 +456,7 @@ function Typed({
 const HERO_VIDEOS = {
   "1": { src: "/videos/hero-1.mp4", position: "object-[74%_40%] md:object-[50%_50%]" },
   "2": { src: "/videos/hero-2.mp4", position: "object-[74%_40%] md:object-[50%_50%]" },
-  "3": { src: "/videos/hero-3.mp4", position: "object-[50%_40%] md:object-[50%_50%]" },
+  "3": { src: "/videos/hero-3.mp4", position: "object-[50%_30%] md:object-[50%_12%]" },
 } as const;
 
 function Hero() {
