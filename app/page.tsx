@@ -451,10 +451,25 @@ function Typed({
 }
 
 // ─── HERO ─────────────────────────────────────────────────────────────────────
+// All hero clips are 16:9 (object-cover crops the sides on tall/phone screens and the
+// top/bottom on ultrawide ones), so the focal point of each clip is set per breakpoint.
+const HERO_VIDEOS = {
+  "1": { src: "/videos/hero-1.mp4", position: "object-[74%_40%] md:object-[50%_50%]" },
+  "2": { src: "/videos/hero-2.mp4", position: "object-[74%_40%] md:object-[50%_50%]" },
+  "3": { src: "/videos/hero-3.mp4", position: "object-[50%_40%] md:object-[50%_50%]" },
+} as const;
+
 function Hero() {
   const experienceYears = useMemo(() => new Date().getFullYear() - 2015, []);
 
   const [videoReady, setVideoReady] = useState(false);
+  // Default is hero 3; add ?hero=1 or ?hero=2 to the URL to preview the others.
+  const [heroId, setHeroId] = useState<keyof typeof HERO_VIDEOS>("3");
+  React.useEffect(() => {
+    const v = new URLSearchParams(window.location.search).get("hero");
+    if (v === "1" || v === "2" || v === "3") setHeroId(v);
+  }, []);
+  const hero = HERO_VIDEOS[heroId];
   const eyebrow = `${experienceYears}+ Years · Enterprise Engineering`;
   const intro = `${experienceYears}+ years building enterprise systems at scale — loyalty platforms, government modernization, and cloud-native microservices. I ship fast, architect for resilience, and lead teams that deliver.`;
   // Name types first, then everything else follows in sequence.
@@ -473,9 +488,10 @@ function Hero() {
         playsInline
         preload="auto"
         onCanPlay={() => setVideoReady(true)}
-        className="absolute left-0 top-0 -z-20 w-full h-[56svh] md:h-full object-cover object-[74%_40%] md:object-center transition-opacity duration-1000 [mask-image:linear-gradient(to_bottom,black_55%,transparent_100%)] md:[mask-image:none]"
+        key={hero.src}
+        className={`absolute left-0 top-0 -z-20 w-full h-[56svh] md:h-full object-cover ${hero.position} transition-opacity duration-1000 [mask-image:linear-gradient(to_bottom,black_55%,transparent_100%)] md:[mask-image:none]`}
         style={{ opacity: videoReady ? 1 : 0 }}
-        src="/videos/hero-1.mp4"
+        src={hero.src}
       />
       {/* Light left-side scrim for text legibility + fade into the site background */}
       <div
