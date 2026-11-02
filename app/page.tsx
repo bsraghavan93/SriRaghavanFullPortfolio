@@ -346,7 +346,7 @@ function Nav({ onInterests }: { onInterests: () => void }) {
       initial={{ opacity: 0, y: -16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="sticky top-0 z-50 flex items-center justify-between px-6 md:px-10 py-4 backdrop-blur-xl bg-black/25 border-b border-white/5"
+      className="fixed inset-x-0 top-0 z-50 flex items-center justify-between px-6 md:px-10 py-4 backdrop-blur-xl bg-black/25 border-b border-white/5"
     >
       <span className="font-semibold text-white tracking-tight">Sri Raghavan</span>
 
@@ -393,13 +393,40 @@ function Nav({ onInterests }: { onInterests: () => void }) {
 function Hero() {
   const experienceYears = useMemo(() => new Date().getFullYear() - 2015, []);
 
+  const [videoReady, setVideoReady] = useState(false);
+
   return (
-    <section className="relative min-h-[96vh] flex flex-col justify-center px-6 md:px-12 py-28 md:py-32">
+    <section
+      className="relative isolate min-h-[100svh] overflow-hidden flex flex-col justify-center"
+      style={{ background: "#0d1525" }}
+    >
+      {/* Background video */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
+        onCanPlay={() => setVideoReady(true)}
+        className="absolute inset-0 -z-20 h-full w-full object-cover transition-opacity duration-1000"
+        style={{ opacity: videoReady ? 1 : 0 }}
+        src="/videos/hero-1.mp4"
+      />
+      {/* Legibility overlay (stronger on the left where the text sits) + fade into site bg */}
+      <div
+        className="absolute inset-0 -z-10 pointer-events-none"
+        style={{
+          background:
+            "linear-gradient(to right, rgba(6,8,18,0.78) 0%, rgba(6,8,18,0.45) 55%, rgba(6,8,18,0.15) 100%), linear-gradient(to bottom, rgba(6,8,18,0.35) 0%, transparent 25%, transparent 70%, #030711 100%)",
+        }}
+      />
+
+      <div className="w-full max-w-7xl mx-auto px-6 md:px-12 pt-24 pb-24 md:py-32">
       <motion.div
         variants={stagger}
         initial="hidden"
         animate="visible"
-        className="max-w-4xl space-y-8"
+        className="max-w-4xl space-y-6 md:space-y-8"
       >
         {/* Eyebrow */}
         <motion.div variants={fadeUp} className="flex items-center gap-3">
@@ -427,12 +454,12 @@ function Hero() {
         </motion.p>
 
         {/* Value proposition */}
-        <motion.p variants={fadeUp} className="max-w-2xl text-base md:text-lg leading-7 text-slate-400">
+        <motion.p variants={fadeUp} className="max-w-2xl text-sm md:text-lg leading-6 md:leading-7 text-slate-300">
           {experienceYears}+ years building enterprise systems at scale — loyalty platforms, government modernization, and cloud-native microservices. I ship fast, architect for resilience, and lead teams that deliver.
         </motion.p>
 
         {/* Metric chips */}
-        <motion.div variants={fadeUp} className="flex flex-wrap gap-4">
+        <motion.div variants={fadeUp} className="flex flex-wrap gap-2.5 md:gap-4">
           {[
             { value: "94%", label: "Faster Deployments", bg: "bg-cyan-400/8", border: "border-cyan-400/20", val: "text-cyan-300", sep: "bg-cyan-400/20" },
             { value: "70%", label: "Lower API Latency", bg: "bg-violet-400/8", border: "border-violet-400/20", val: "text-violet-300", sep: "bg-violet-400/20" },
@@ -440,7 +467,7 @@ function Hero() {
           ].map(({ value, label, bg, border, val, sep }) => (
             <div
               key={label}
-              className={`flex items-center gap-3 px-5 py-3 rounded-2xl border backdrop-blur-sm ${bg} ${border}`}
+              className={`flex items-center gap-2.5 md:gap-3 px-3.5 md:px-5 py-2.5 md:py-3 rounded-2xl border backdrop-blur-sm ${bg} ${border}`}
             >
               <span className={`font-extrabold text-xl leading-none ${val}`}>{value}</span>
               <div className={`w-px h-6 ${sep}`} />
@@ -453,25 +480,26 @@ function Hero() {
         <motion.div variants={fadeUp} className="flex flex-wrap gap-4 pt-1">
           <button
             onClick={() => document.getElementById("achievements")?.scrollIntoView({ behavior: "smooth" })}
-            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-7 py-3.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity duration-200 shadow-lg shadow-cyan-500/20"
+            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-6 md:px-7 py-3 md:py-3.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity duration-200 shadow-lg shadow-cyan-500/20"
           >
             View Projects <ArrowRight className="h-4 w-4" />
           </button>
           <button
             onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}
-            className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-7 py-3.5 text-sm font-semibold text-white hover:border-white/25 hover:bg-white/10 transition-all duration-200 backdrop-blur-sm"
+            className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-6 md:px-7 py-3 md:py-3.5 text-sm font-semibold text-white hover:border-white/25 hover:bg-white/10 transition-all duration-200 backdrop-blur-sm"
           >
             Contact Me
           </button>
         </motion.div>
       </motion.div>
+      </div>
 
       {/* Scroll indicator */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.4, duration: 0.6 }}
-        className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-slate-600"
+        className="absolute bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-slate-400"
       >
         <motion.div
           animate={{ y: [0, 5, 0] }}
@@ -1243,8 +1271,8 @@ export default function PortfolioSite() {
           <Background />
           <div className="relative z-10">
             <Nav onInterests={() => setPage("interests")} />
+            <Hero />
             <div className="max-w-7xl mx-auto">
-              <Hero />
               <WhatIBring />
               <TechStack />
               <Achievements />
