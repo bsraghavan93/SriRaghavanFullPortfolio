@@ -1191,7 +1191,7 @@ function InterestsPage({ onBack }: { onBack: () => void }) {
           onCanPlay={() => setVideoReady(true)}
           className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000"
           style={{ opacity: videoReady ? 1 : 0, willChange: "opacity" }}
-          src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260206_044704_dd33cb15-c23f-4cfc-aa09-a0465d4dcb54.mp4"
+          src="/videos/hero-2.mp4"
         />
 
         {/* Cinematic dark vignette */}
