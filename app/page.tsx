@@ -1149,6 +1149,72 @@ function BeyondWorkTeaser({ onInterests }: { onInterests: () => void }) {
   );
 }
 
+// ─── INTERESTS HERO ANIMATION HELPERS ─────────────────────────────────────────
+// 3D-printer reveal: the line is built bottom-up in discrete layers while a glowing
+// "nozzle" line travels along the build edge.
+const printLayers = (t: number) => Math.floor(t * 10) / 10;
+
+function PrintLine({ children, delay }: { children: React.ReactNode; delay: number }) {
+  const duration = 0.9;
+  return (
+    <span className="relative block w-fit">
+      <motion.span
+        className="block"
+        initial={{ clipPath: "inset(100% 0% 0% 0%)" }}
+        animate={{ clipPath: "inset(0% 0% 0% 0%)" }}
+        transition={{ delay, duration, ease: printLayers }}
+      >
+        {children}
+      </motion.span>
+      <motion.span
+        aria-hidden
+        className="pointer-events-none absolute left-0 right-0 h-[3px] rounded-full bg-orange-400 shadow-[0_0_12px_2px_rgba(251,146,60,0.9)]"
+        initial={{ top: "100%", opacity: 1 }}
+        animate={{ top: "0%", opacity: [1, 1, 0] }}
+        transition={{
+          delay,
+          duration,
+          ease: printLayers,
+          opacity: { delay, duration, times: [0, 0.9, 1] },
+        }}
+      />
+    </span>
+  );
+}
+
+// Retro game "loading" bar that fills segment by segment, then flips to READY.
+function LoadBar({ delay }: { delay: number }) {
+  const segments = 10;
+  const [ready, setReady] = React.useState(false);
+
+  React.useEffect(() => {
+    const t = setTimeout(() => setReady(true), (delay + segments * 0.06 + 0.2) * 1000);
+    return () => clearTimeout(t);
+  }, [delay]);
+
+  return (
+    <div className="flex items-center gap-3" aria-hidden>
+      <div className="flex gap-1">
+        {Array.from({ length: segments }).map((_, i) => (
+          <motion.span
+            key={i}
+            className="h-2.5 w-3 md:w-4 rounded-[2px] bg-emerald-400"
+            initial={{ opacity: 0.15 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: delay + i * 0.06, duration: 0.12 }}
+          />
+        ))}
+      </div>
+      <span
+        className="text-[10px] font-bold uppercase tracking-[0.25em] text-emerald-300/90"
+        style={{ fontFamily: "var(--font-rubik), sans-serif" }}
+      >
+        {ready ? "Player 1 · Ready" : "Loading…"}
+      </span>
+    </div>
+  );
+}
+
 // ─── INTERESTS PAGE ───────────────────────────────────────────────────────────
 function InterestsPage({ onBack }: { onBack: () => void }) {
   const [videoReady, setVideoReady] = React.useState(false);
@@ -1168,36 +1234,31 @@ function InterestsPage({ onBack }: { onBack: () => void }) {
       style={{ background: "#0a0e1a" }}
     >
       {/* ── VIDEO HERO ───────────────────────────────────────────────────── */}
-      <section className="relative min-h-screen overflow-hidden" style={{ background: "#0d1525" }}>
-
-        {/* Poster / fallback shown until video is ready */}
+      {/* Desktop: full-bleed video, text in its blue left panel. Phones: whole clip on top, text below. */}
+      <section
+        className="relative min-h-[100svh] overflow-hidden flex flex-col md:justify-center pt-12 md:pt-0"
+        style={{ background: "#0d1525" }}
+      >
+        {/* Video */}
         <div
-          className="absolute inset-0 transition-opacity duration-700"
-          style={{
-            background: "linear-gradient(135deg, #0d1525 0%, #21346e 50%, #0d1525 100%)",
-            opacity: videoReady ? 0 : 1,
-            pointerEvents: "none",
-            zIndex: 1,
-          }}
-        />
+          className="relative w-full aspect-video md:absolute md:inset-0 md:aspect-auto transition-opacity duration-1000 [mask-image:linear-gradient(to_bottom,#000_78%,transparent_100%)] md:[mask-image:none]"
+          style={{ opacity: videoReady ? 1 : 0 }}
+        >
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+            onCanPlay={() => setVideoReady(true)}
+            className="h-full w-full object-cover md:object-center"
+            src="/videos/interests-hero.mp4"
+          />
+        </div>
 
-        {/* Background video — preload + crossOrigin for smoother start */}
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          onCanPlay={() => setVideoReady(true)}
-          className="absolute inset-0 w-full h-full object-cover object-[72%_center] md:object-center transition-opacity duration-1000"
-          style={{ opacity: videoReady ? 1 : 0, willChange: "opacity" }}
-          src="/videos/interests-hero.mp4"
-        />
-
-        {/* Soft top/bottom fade only — keeps the bright clay scene clear. The video's
-            plain blue panel on the left is where the headline sits. */}
+        {/* Soft top/bottom fade (desktop) — keeps the bright clay scene clear */}
         <div
-          className="absolute inset-0 pointer-events-none"
+          className="absolute inset-0 pointer-events-none hidden md:block"
           style={{
             background:
               "linear-gradient(to bottom, rgba(6,8,18,0.35) 0%, transparent 22%, transparent 70%, rgba(6,8,18,0.85) 100%), linear-gradient(to right, rgba(6,8,18,0.35) 0%, transparent 45%)",
@@ -1206,10 +1267,10 @@ function InterestsPage({ onBack }: { onBack: () => void }) {
         />
 
         {/* Back button */}
-        <div className="absolute top-7 left-7 z-20">
+        <div className="absolute top-5 md:top-7 left-5 md:left-7 z-20">
           <button
             onClick={onBack}
-            className="group flex items-center gap-2 text-[13px] text-white/55 hover:text-white transition-all duration-300"
+            className="group flex items-center gap-2 text-[13px] text-white/70 hover:text-white transition-all duration-300"
           >
             <ArrowLeft className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-0.5" />
             <span style={{ fontFamily: "var(--font-rubik), sans-serif", fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", fontSize: 11 }}>
@@ -1218,51 +1279,49 @@ function InterestsPage({ onBack }: { onBack: () => void }) {
           </button>
         </div>
 
-        {/* Hero content */}
-        <div className="relative z-10 container mx-auto px-6 md:px-14 pt-36 md:pt-52">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
+        {/* Hero content — left-aligned so it stays inside the video's blue panel at any screen size */}
+        <div className="relative z-10 w-full px-6 sm:px-10 md:px-14 lg:px-20 pt-6 pb-14 md:py-24">
+          {/* Gaming-style loading bar */}
+          <LoadBar delay={0.2} />
+
+          {/* Headline prints in layer by layer, like a 3D printer */}
+          <h1
+            className="mt-4 md:mt-5 text-[clamp(2.6rem,13vw,4rem)] md:text-[clamp(2.1rem,3.9vw,5.5rem)]"
+            style={{
+              fontFamily: "var(--font-rubik), sans-serif",
+              fontWeight: 800,
+              lineHeight: 0.95,
+              letterSpacing: "-0.04em",
+              textTransform: "uppercase",
+              color: "#ffffff",
+            }}
           >
-            <h1
-              style={{
-                fontFamily: "var(--font-rubik), sans-serif",
-                fontWeight: 800,
-                lineHeight: 0.95,
-                letterSpacing: "-3px",
-                textTransform: "uppercase",
-                color: "#ffffff",
-                fontSize: "clamp(38px, 4.6vw, 72px)",
-              }}
-            >
-              ENGINEER.
-              <br />
-              CREATOR.
-              <br />
+            <PrintLine delay={0.7}>ENGINEER.</PrintLine>
+            <PrintLine delay={1.15}>CREATOR.</PrintLine>
+            <PrintLine delay={1.6}>
               <span style={{ color: "rgba(255,255,255,0.92)" }}>EXPLORER.</span>
-            </h1>
-            <p
-              className="mt-5 max-w-[16rem] md:max-w-[22rem]"
-              style={{
-                fontFamily: "var(--font-rubik), sans-serif",
-                fontSize: 13,
-                lineHeight: 1.6,
-                letterSpacing: "0.04em",
-                color: "rgba(255,255,255,0.7)",
-              }}
-            >
-              3D printing, drones, gaming, photography and filmmaking — what I build and explore beyond the code.
-            </p>
-          </motion.div>
+            </PrintLine>
+          </h1>
+
+          <p
+            className="mt-5 max-w-[22rem] md:max-w-[min(22rem,24vw)] text-[13px] leading-[1.6] tracking-[0.03em] text-white/75"
+            style={{ fontFamily: "var(--font-rubik), sans-serif" }}
+          >
+            <Typed
+              text="3D printing, drones, gaming, photography and filmmaking — what I build and explore beyond the code."
+              delay={2400}
+              speed={14}
+            />
+          </p>
 
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.4 }}
+            initial={{ opacity: 0, y: 12, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ delay: 3.5, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3"
           >
             <button
-              style={{ width: 184, height: 65, marginTop: 32 }}
+              style={{ width: 168, height: 56 }}
               className="relative flex items-center justify-center transition-transform duration-200 ease-out hover:scale-105 active:scale-95"
               onClick={() => document.getElementById("beyond-work")?.scrollIntoView({ behavior: "smooth" })}
             >
@@ -1278,7 +1337,7 @@ function InterestsPage({ onBack }: { onBack: () => void }) {
                 style={{
                   fontFamily: "var(--font-rubik), sans-serif",
                   fontWeight: 700,
-                  fontSize: 18,
+                  fontSize: 17,
                   textTransform: "uppercase",
                   letterSpacing: "0.06em",
                   color: "#0d1525",
@@ -1289,12 +1348,20 @@ function InterestsPage({ onBack }: { onBack: () => void }) {
                 EXPLORE
               </span>
             </button>
+            <motion.span
+              animate={{ opacity: [1, 0.15, 1] }}
+              transition={{ duration: 1.2, repeat: Infinity, ease: "linear", delay: 4 }}
+              className="text-[11px] font-bold uppercase tracking-[0.25em] text-amber-300"
+              style={{ fontFamily: "var(--font-rubik), sans-serif" }}
+            >
+              ▶ Press start
+            </motion.span>
           </motion.div>
         </div>
 
         {/* Scroll nudge */}
         <motion.div
-          className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2"
+          className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 hidden md:flex flex-col items-center gap-2"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.2, duration: 0.8 }}
