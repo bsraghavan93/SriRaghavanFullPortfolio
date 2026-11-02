@@ -1189,17 +1189,18 @@ function InterestsPage({ onBack }: { onBack: () => void }) {
           playsInline
           preload="auto"
           onCanPlay={() => setVideoReady(true)}
-          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000"
+          className="absolute inset-0 w-full h-full object-cover object-[72%_center] md:object-center transition-opacity duration-1000"
           style={{ opacity: videoReady ? 1 : 0, willChange: "opacity" }}
-          src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260206_044704_dd33cb15-c23f-4cfc-aa09-a0465d4dcb54.mp4"
+          src="/videos/interests-hero.mp4"
         />
 
-        {/* Cinematic dark vignette */}
+        {/* Soft top/bottom fade only — keeps the bright clay scene clear. The video's
+            plain blue panel on the left is where the headline sits. */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
             background:
-              "radial-gradient(ellipse at center, transparent 30%, rgba(6,8,18,0.55) 100%), linear-gradient(to bottom, rgba(6,8,18,0.35) 0%, transparent 25%, transparent 60%, rgba(6,8,18,0.85) 100%)",
+              "linear-gradient(to bottom, rgba(6,8,18,0.35) 0%, transparent 22%, transparent 70%, rgba(6,8,18,0.85) 100%), linear-gradient(to right, rgba(6,8,18,0.35) 0%, transparent 45%)",
             zIndex: 2,
           }}
         />
@@ -1232,7 +1233,7 @@ function InterestsPage({ onBack }: { onBack: () => void }) {
                 letterSpacing: "-3px",
                 textTransform: "uppercase",
                 color: "#ffffff",
-                fontSize: "clamp(56px, 9vw, 100px)",
+                fontSize: "clamp(38px, 4.6vw, 72px)",
               }}
             >
               ENGINEER.
@@ -1241,6 +1242,18 @@ function InterestsPage({ onBack }: { onBack: () => void }) {
               <br />
               <span style={{ color: "rgba(255,255,255,0.92)" }}>EXPLORER.</span>
             </h1>
+            <p
+              className="mt-5 max-w-[16rem] md:max-w-[22rem]"
+              style={{
+                fontFamily: "var(--font-rubik), sans-serif",
+                fontSize: 13,
+                lineHeight: 1.6,
+                letterSpacing: "0.04em",
+                color: "rgba(255,255,255,0.7)",
+              }}
+            >
+              3D printing, drones, gaming, photography and filmmaking — what I build and explore beyond the code.
+            </p>
           </motion.div>
 
           <motion.div
@@ -1249,7 +1262,7 @@ function InterestsPage({ onBack }: { onBack: () => void }) {
             transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.4 }}
           >
             <button
-              style={{ width: 184, height: 65, marginTop: 44 }}
+              style={{ width: 184, height: 65, marginTop: 32 }}
               className="relative flex items-center justify-center transition-transform duration-200 ease-out hover:scale-105 active:scale-95"
               onClick={() => document.getElementById("beyond-work")?.scrollIntoView({ behavior: "smooth" })}
             >
