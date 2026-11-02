@@ -338,6 +338,15 @@ function SectionPill({ icon: Icon, label }: { icon: React.ElementType; label: st
 
 // ─── NAV ─────────────────────────────────────────────────────────────────────
 function Nav({ onInterests }: { onInterests: () => void }) {
+  // Over the light hero video the nav uses dark text; once past it, the dark site theme.
+  const [scrolled, setScrolled] = useState(false);
+  React.useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > window.innerHeight * 0.75);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   const scrollTo = (id: string) =>
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
 
@@ -346,11 +355,11 @@ function Nav({ onInterests }: { onInterests: () => void }) {
       initial={{ opacity: 0, y: -16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="fixed inset-x-0 top-0 z-50 flex items-center justify-between px-6 md:px-10 py-4 backdrop-blur-xl bg-black/25 border-b border-white/5"
+      className={`fixed inset-x-0 top-0 z-50 flex items-center justify-between px-6 md:px-10 py-4 backdrop-blur-xl border-b transition-colors duration-300 ${scrolled ? "bg-black/25 border-white/5" : "bg-white/35 border-white/40"}`}
     >
-      <span className="font-semibold text-white tracking-tight">Sri Raghavan</span>
+      <span className={`font-semibold tracking-tight transition-colors duration-300 ${scrolled ? "text-white" : "text-slate-900"}`}>Sri Raghavan</span>
 
-      <div className="hidden md:flex items-center gap-6 text-[13px] text-slate-400">
+      <div className={`hidden md:flex items-center gap-6 text-[13px] font-medium transition-colors duration-300 ${scrolled ? "text-slate-400" : "text-slate-700"}`}>
         {[
           { id: "stack", label: "Stack" },
           { id: "achievements", label: "Impact" },
@@ -361,7 +370,7 @@ function Nav({ onInterests }: { onInterests: () => void }) {
           <button
             key={id}
             onClick={() => scrollTo(id)}
-            className="hover:text-white transition-colors duration-200"
+            className={`transition-colors duration-200 ${scrolled ? "hover:text-white" : "hover:text-slate-950"}`}
           >
             {label}
           </button>
@@ -372,14 +381,14 @@ function Nav({ onInterests }: { onInterests: () => void }) {
         <a
           href={RESUME_PATH}
           download
-          className="hidden md:flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-[13px] text-slate-300 hover:bg-white/10 hover:text-white transition-all duration-200"
+          className={`hidden md:flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-[13px] transition-all duration-200 ${scrolled ? "border-white/15 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white" : "border-slate-900/20 bg-white/50 text-slate-800 hover:bg-white/80"}`}
         >
           <Download className="h-3.5 w-3.5" />
           Resume
         </a>
         <button
           onClick={onInterests}
-          className="flex items-center gap-1.5 rounded-full border border-pink-400/30 bg-pink-400/10 px-4 py-1.5 text-[13px] text-pink-300 hover:bg-pink-400/20 transition-all duration-200"
+          className={`flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-[13px] transition-all duration-200 ${scrolled ? "border-pink-400/30 bg-pink-400/10 text-pink-300 hover:bg-pink-400/20" : "border-pink-600/30 bg-white/60 text-pink-700 hover:bg-white/90"}`}
         >
           <Heart className="h-3.5 w-3.5" />
           Interests
@@ -434,7 +443,7 @@ function Typed({
       <span className={`absolute inset-0 ${className}`} aria-label={text}>
         {text.slice(0, count)}
         {typing && (
-          <span className="ml-0.5 inline-block w-[0.08em] min-w-[2px] h-[0.9em] translate-y-[0.1em] bg-cyan-400 animate-pulse" />
+          <span className="ml-0.5 inline-block w-[0.08em] min-w-[2px] h-[0.9em] translate-y-[0.1em] bg-cyan-400 md:bg-sky-700 animate-pulse" />
         )}
       </span>
     </span>
@@ -473,7 +482,7 @@ function Hero() {
         className="absolute inset-0 -z-10 pointer-events-none hidden md:block"
         style={{
           background:
-            "linear-gradient(to right, rgba(6,8,18,0.5) 0%, rgba(6,8,18,0.15) 45%, transparent 70%), linear-gradient(to bottom, transparent 80%, #030711 100%)",
+            "linear-gradient(to right, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.1) 45%, transparent 70%), linear-gradient(to bottom, transparent 82%, #030711 100%)",
         }}
       />
       <div
@@ -488,18 +497,18 @@ function Hero() {
       <div className="max-w-4xl space-y-4 md:space-y-8">
         {/* Eyebrow */}
         <div className="flex items-center gap-3">
-          <span className="h-px w-8 bg-cyan-400/50 shrink-0" />
+          <span className="h-px w-8 bg-cyan-400/50 md:bg-sky-700/60 shrink-0" />
           <Typed
             text={eyebrow}
             delay={T.eyebrow}
             speed={22}
-            className="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.28em] text-cyan-400/90 font-medium"
+            className="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.28em] text-cyan-400/90 md:text-sky-800 font-medium"
           />
         </div>
 
         {/* Name */}
         <div className="space-y-0">
-          <h1 className="text-[clamp(2.5rem,8vw,5.5rem)] font-bold tracking-tight leading-[1.04] text-white">
+          <h1 className="text-[clamp(2.5rem,8vw,5.5rem)] font-bold tracking-tight leading-[1.04] text-white md:text-slate-900">
             <Typed text="Sri Raghavan" delay={T.name1} speed={35} />
           </h1>
           <h1 className="text-[clamp(2.5rem,8vw,5.5rem)] font-bold tracking-tight leading-[1.04]">
@@ -507,7 +516,7 @@ function Hero() {
               text="Balasundaram"
               delay={T.name2}
               speed={35}
-              className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-violet-400"
+              className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-violet-400 md:from-sky-600 md:to-violet-700"
             />
           </h1>
         </div>
@@ -518,19 +527,19 @@ function Hero() {
             text="Lead Full Stack .NET Engineer"
             delay={T.title}
             speed={24}
-            className="text-lg md:text-xl font-medium text-slate-200"
+            className="text-lg md:text-xl font-medium text-slate-200 md:text-slate-900"
           />
-          <span className="hidden md:inline text-slate-500">·</span>
+          <span className="hidden md:inline text-slate-500 md:text-slate-600">·</span>
           <Typed
             text="Cloud · Microservices · Architecture"
             delay={T.tagline}
             speed={20}
-            className="text-sm md:text-base font-normal text-slate-300"
+            className="text-sm md:text-base font-normal text-slate-300 md:text-slate-700"
           />
         </div>
 
         {/* Value proposition */}
-        <p className="max-w-2xl text-[13px] md:text-lg leading-5 md:leading-7 text-slate-200">
+        <p className="max-w-2xl text-[13px] md:text-lg leading-5 md:leading-7 text-slate-200 md:text-slate-800">
           <Typed text={intro} delay={T.intro} speed={5} />
         </p>
 
@@ -541,9 +550,9 @@ function Hero() {
           className="grid grid-cols-3 gap-2 md:flex md:flex-wrap md:gap-4"
         >
           {[
-            { value: "94%", label: "Faster Deployments", bg: "bg-cyan-400/8", border: "border-cyan-400/20", val: "text-cyan-300", sep: "bg-cyan-400/20" },
-            { value: "70%", label: "Lower API Latency", bg: "bg-violet-400/8", border: "border-violet-400/20", val: "text-violet-300", sep: "bg-violet-400/20" },
-            { value: "10K+", label: "Concurrent Requests", bg: "bg-emerald-400/8", border: "border-emerald-400/20", val: "text-emerald-300", sep: "bg-emerald-400/20" },
+            { value: "94%", label: "Faster Deployments", bg: "bg-cyan-400/8 md:bg-white/55", border: "border-cyan-400/20 md:border-white/70", val: "text-cyan-300 md:text-sky-700", sep: "bg-cyan-400/20 md:bg-slate-900/15" },
+            { value: "70%", label: "Lower API Latency", bg: "bg-violet-400/8 md:bg-white/55", border: "border-violet-400/20 md:border-white/70", val: "text-violet-300 md:text-violet-700", sep: "bg-violet-400/20 md:bg-slate-900/15" },
+            { value: "10K+", label: "Concurrent Requests", bg: "bg-emerald-400/8 md:bg-white/55", border: "border-emerald-400/20 md:border-white/70", val: "text-emerald-300 md:text-emerald-700", sep: "bg-emerald-400/20 md:bg-slate-900/15" },
           ].map(({ value, label, bg, border, val, sep }) => (
             <div
               key={label}
@@ -551,7 +560,7 @@ function Hero() {
             >
               <span className={`font-extrabold text-xl leading-none ${val}`}>{value}</span>
               <div className={`hidden md:block w-px h-6 ${sep}`} />
-              <span className="text-slate-300 text-[11px] md:text-xs leading-tight md:max-w-[72px]">{label}</span>
+              <span className="text-slate-300 md:text-slate-700 text-[11px] md:text-xs leading-tight md:max-w-[72px]">{label}</span>
             </div>
           ))}
         </motion.div>
@@ -570,7 +579,7 @@ function Hero() {
           </button>
           <button
             onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}
-            className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-6 md:px-7 py-3 md:py-3.5 text-sm font-semibold text-white hover:border-white/25 hover:bg-white/10 transition-all duration-200 backdrop-blur-sm"
+            className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-6 md:px-7 py-3 md:py-3.5 text-sm font-semibold text-white md:border-slate-900/25 md:bg-white/50 md:text-slate-900 hover:border-white/25 hover:bg-white/10 md:hover:border-slate-900/40 md:hover:bg-white/75 transition-all duration-200 backdrop-blur-sm"
           >
             Contact Me
           </button>
