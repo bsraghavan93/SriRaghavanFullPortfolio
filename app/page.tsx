@@ -442,29 +442,14 @@ function Typed({
 }
 
 // ─── HERO ─────────────────────────────────────────────────────────────────────
-// Separate clips per orientation: 9:16 for phones, 16:9 for desktop. Both keep the subject
-// in a safe area, so object-cover only trims empty background on odd screen shapes.
-const HERO_SRC = {
-  mobile: "/videos/hero-4-mobile.mp4",
-  desktop: "/videos/hero-4-desktop.mp4",
-};
+// One 16:9 clip for every screen. It is shown smaller than the hero (right side on desktop,
+// top on phones) and its edges are masked so it melts into the hero background.
+const HERO_SRC = "/videos/hero-4-desktop.mp4";
 
 function Hero() {
   const experienceYears = useMemo(() => new Date().getFullYear() - 2015, []);
 
   const [videoReady, setVideoReady] = useState(false);
-  // null until mounted so only the clip for this screen is downloaded
-  const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
-  React.useEffect(() => {
-    const mq = window.matchMedia("(min-width: 768px)");
-    const update = () => {
-      setVideoReady(false);
-      setIsDesktop(mq.matches);
-    };
-    setIsDesktop(mq.matches);
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
   const eyebrow = `${experienceYears}+ Years · Enterprise Engineering`;
   const intro = `${experienceYears}+ years building enterprise systems at scale — loyalty platforms, government modernization, and cloud-native microservices. I ship fast, architect for resilience, and lead teams that deliver.`;
   // Name types first, then everything else follows in sequence.
@@ -475,21 +460,22 @@ function Hero() {
     <section
       className="relative isolate min-h-[100svh] overflow-hidden flex flex-col justify-end md:justify-center bg-[#0a0f1d]"
     >
-      {/* Background video: the 9:16 clip fills the hero on phones (empty lower half holds the text) */}
-      {isDesktop !== null && (
+      {/* Hero video, ~30% smaller than full-bleed on desktop, edges faded into the hero bg */}
+      <div
+        className="absolute inset-x-0 top-0 -z-20 h-[46svh] md:inset-x-auto md:right-0 md:top-1/2 md:h-auto md:w-[min(72vw,calc(72svh*1.7778))] md:aspect-video md:-translate-y-1/2 transition-opacity duration-1000 [mask-image:radial-gradient(ellipse_75%_65%_at_62%_40%,#000_55%,transparent_100%)] md:[mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_62%,transparent_100%)]"
+        style={{ opacity: videoReady ? 1 : 0 }}
+      >
         <video
-          key={isDesktop ? "desktop" : "mobile"}
           autoPlay
           loop
           muted
           playsInline
           preload="auto"
           onCanPlay={() => setVideoReady(true)}
-          className="absolute inset-0 -z-20 h-full w-full object-cover object-top md:object-center transition-opacity duration-1000"
-          style={{ opacity: videoReady ? 1 : 0 }}
-          src={isDesktop ? HERO_SRC.desktop : HERO_SRC.mobile}
+          className="h-full w-full object-cover object-[80%_50%] md:object-center"
+          src={HERO_SRC}
         />
-      )}
+      </div>
       {/* Gentle top shade for the nav + fade into the site background */}
       <div
         className="absolute inset-0 -z-10 pointer-events-none"
