@@ -290,6 +290,17 @@ export default function JsonViewer() {
     return null;
   }, [hasDoc, root, selectedNode]);
 
+  // Which table row / cell (if any) the current selection points at.
+  const tableSel = useMemo(() => {
+    const none = { index: null as number | null, col: null as string | null };
+    if (!table || !selected) return none;
+    const n = table.segs.length;
+    if (selected.length <= n || typeof selected[n] !== "number") return none;
+    if (!table.segs.every((sg, k) => sg === selected[k])) return none;
+    const col = selected.length === n + 2 && typeof selected[n + 1] === "string" ? (selected[n + 1] as string) : null;
+    return { index: selected[n] as number, col };
+  }, [table, selected]);
+
   const prettyText = useMemo(() => {
     if (!hasDoc || view !== "text") return "";
     return JSON.stringify(root, null, indent === "tab" ? "\t" : Number(indent)) ?? "";
@@ -845,12 +856,14 @@ export default function JsonViewer() {
               <TableView
                 rows={table?.rows ?? null}
                 sourceLabel={table ? pathToId(table.segs) : ""}
-                selectedIndex={
-                  table && selected && selected.length === table.segs.length + 1 && typeof selected[selected.length - 1] === "number"
-                    ? (selected[selected.length - 1] as number)
-                    : null
-                }
+                selectedIndex={tableSel.index}
+                selectedCol={tableSel.col}
                 onSelectRow={(i) => table && reveal([...table.segs, i])}
+                onSelectCell={(i, col) => {
+                  if (!table) return;
+                  reveal([...table.segs, i, col]);
+                  setDetailsOpen(true); // show the full cell value in the side pane
+                }}
               />
             )}
           </div>
