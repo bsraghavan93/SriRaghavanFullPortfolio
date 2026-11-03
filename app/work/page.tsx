@@ -6,6 +6,7 @@ import {
   Binary,
   Braces,
   Clock,
+  Database,
   Fingerprint,
   GitCompare,
   KeyRound,
@@ -13,6 +14,7 @@ import {
   Palette,
   Regex,
   Sparkles,
+  Timer,
   type LucideIcon,
 } from "lucide-react";
 
@@ -40,16 +42,27 @@ const LIVE: Tool[] = [
     tags: ["Tree", "Search", "JSONPath", "Table"],
     accent: "from-cyan-500 to-violet-500",
   },
+  {
+    name: "JSON Diff",
+    blurb:
+      "Compare two JSON documents structurally: every added, removed and changed value by path, a side-by-side view, and an exportable JSON Patch.",
+    icon: GitCompare,
+    href: "/work/json-diff",
+    tags: ["Compare", "Patch", "Side by side"],
+    accent: "from-emerald-500 to-cyan-500",
+  },
+  {
+    name: "GUID / UUID Generator",
+    blurb:
+      "Bulk-generate v4, time-ordered v7 and name-based v5 GUIDs in .NET, SQL, Base64 and JSON formats, and inspect any GUID.",
+    icon: Fingerprint,
+    href: "/work/guid-generator",
+    tags: [".NET", "v7", "Bulk"],
+    accent: "from-violet-500 to-purple-500",
+  },
 ];
 
 const SOON: Tool[] = [
-  {
-    name: "JSON Diff",
-    blurb: "Compare two JSON documents structurally and see what was added, removed or changed.",
-    icon: GitCompare,
-    tags: ["Compare"],
-    accent: "from-emerald-500 to-cyan-500",
-  },
   {
     name: "JWT Decoder",
     blurb: "Decode headers and claims, check expiry and see which algorithm signed the token.",
@@ -79,13 +92,6 @@ const SOON: Tool[] = [
     accent: "from-sky-500 to-indigo-500",
   },
   {
-    name: "GUID / UUID Generator",
-    blurb: "Generate v4 and v7 UUIDs in bulk, with format options for .NET, SQL and JS.",
-    icon: Fingerprint,
-    tags: [".NET", "Generate"],
-    accent: "from-violet-500 to-purple-500",
-  },
-  {
     name: "Colour Converter",
     blurb: "HEX, RGB, HSL and OKLCH in one place, with contrast ratios for accessibility.",
     icon: Palette,
@@ -99,6 +105,20 @@ const SOON: Tool[] = [
     tags: ["Web"],
     accent: "from-teal-500 to-emerald-500",
   },
+  {
+    name: "Cron Expression Explainer",
+    blurb: "Turn cron strings into plain English and preview the next run times.",
+    icon: Timer,
+    tags: ["DevOps"],
+    accent: "from-indigo-500 to-sky-500",
+  },
+  {
+    name: "SQL Formatter",
+    blurb: "Tidy up long queries with consistent casing and indentation across dialects.",
+    icon: Database,
+    tags: ["SQL"],
+    accent: "from-cyan-500 to-blue-500",
+  },
 ];
 
 function LiveCard({ tool }: { tool: Tool }) {
@@ -106,7 +126,7 @@ function LiveCard({ tool }: { tool: Tool }) {
   return (
     <Link
       href={tool.href!}
-      className="group relative flex flex-col gap-5 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.02] p-7 transition-all duration-300 hover:-translate-y-1 hover:border-cyan-400/30 hover:shadow-[0_20px_60px_-20px_rgba(34,211,238,0.35)] md:col-span-2 lg:col-span-1"
+      className="group relative flex flex-col gap-5 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.02] p-7 transition-all duration-300 hover:-translate-y-1 hover:border-cyan-400/30 hover:shadow-[0_20px_60px_-20px_rgba(34,211,238,0.35)]"
     >
       <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-gradient-to-br from-cyan-500/20 to-violet-500/20 blur-3xl transition-opacity group-hover:opacity-100" />
       <div className="flex items-start justify-between">

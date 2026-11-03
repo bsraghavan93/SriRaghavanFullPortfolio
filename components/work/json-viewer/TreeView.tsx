@@ -6,8 +6,8 @@ import { previewValue, type Row } from "@/lib/json-tools";
 import { Highlight, TYPE_STYLES } from "./ui";
 import { useVirtual } from "./useVirtual";
 
-const ROW_H = 26;
-const INDENT = 16;
+const ROW_H = 32;
+const INDENT = 22;
 
 type Props = {
   rows: Row[];
@@ -100,7 +100,7 @@ export default function TreeView({
       tabIndex={0}
       role="tree"
       aria-label="JSON tree"
-      className="relative h-full overflow-auto outline-none font-mono text-[12.5px] focus-visible:ring-1 focus-visible:ring-cyan-400/30"
+      className="relative h-full overflow-auto outline-none font-mono text-[13px] focus-visible:ring-1 focus-visible:ring-cyan-400/30"
     >
       <div style={{ height: total, position: "relative" }}>
         {visible.map((row, k) => {
@@ -115,7 +115,11 @@ export default function TreeView({
               role="treeitem"
               aria-expanded={row.count > 0 ? row.expanded : undefined}
               aria-selected={selected}
-              onClick={() => onSelect(row)}
+              onClick={() => {
+                // clicking an already-selected container toggles it
+                if (selected && row.count > 0) onToggle(row.id);
+                else onSelect(row);
+              }}
               onDoubleClick={() => row.count > 0 && onToggle(row.id)}
               style={{ position: "absolute", top: i * ROW_H, height: ROW_H, left: 0, right: 0 }}
               className={`group flex items-center cursor-pointer whitespace-nowrap pr-3 ${
@@ -142,12 +146,16 @@ export default function TreeView({
                     e.stopPropagation();
                     onToggle(row.id);
                   }}
-                  className="mr-1 flex h-4 w-4 shrink-0 items-center justify-center rounded text-slate-400 hover:bg-white/10 hover:text-white"
+                  className={`mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition-colors ${
+                    row.expanded
+                      ? "border-cyan-400/40 bg-cyan-400/15 text-cyan-200"
+                      : "border-white/15 bg-white/[0.06] text-slate-200"
+                  } hover:border-cyan-400/60 hover:bg-cyan-400/25 hover:text-white`}
                 >
-                  <ChevronRight className={`h-3.5 w-3.5 transition-transform ${row.expanded ? "rotate-90" : ""}`} />
+                  <ChevronRight className={`h-4 w-4 transition-transform ${row.expanded ? "rotate-90" : ""}`} />
                 </button>
               ) : (
-                <span className="mr-1 w-4 shrink-0" />
+                <span className="mr-2 w-6 shrink-0" />
               )}
 
               {row.keyLabel !== null && (
