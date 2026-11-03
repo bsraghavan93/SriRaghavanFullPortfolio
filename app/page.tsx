@@ -1234,14 +1234,14 @@ function InterestsPage({ onBack }: { onBack: () => void }) {
       style={{ background: "#0a0e1a" }}
     >
       {/* ── VIDEO HERO ───────────────────────────────────────────────────── */}
-      {/* Desktop: full-bleed video, text in its blue left panel. Phones: whole clip on top, text below. */}
+      {/* Desktop: full-bleed video, text in its blue left panel. Phones: the scene (blue panel cropped off) on top, text centred below. */}
       <section
         className="relative min-h-[100svh] overflow-hidden flex flex-col md:justify-center pt-12 md:pt-0"
         style={{ background: "#0d1525" }}
       >
         {/* Video */}
         <div
-          className="relative w-full aspect-video md:absolute md:inset-0 md:aspect-auto transition-opacity duration-1000 [mask-image:linear-gradient(to_bottom,#000_78%,transparent_100%)] md:[mask-image:none]"
+          className="relative w-full overflow-hidden aspect-[1.156] md:absolute md:inset-0 md:aspect-auto transition-opacity duration-1000 [mask-image:linear-gradient(to_bottom,#000_78%,transparent_100%)] md:[mask-image:none]"
           style={{ opacity: videoReady ? 1 : 0 }}
         >
           <video
@@ -1251,7 +1251,7 @@ function InterestsPage({ onBack }: { onBack: () => void }) {
             playsInline
             preload="auto"
             onCanPlay={() => setVideoReady(true)}
-            className="h-full w-full object-cover md:object-center"
+            className="absolute right-0 top-0 h-full w-auto max-w-none aspect-video object-cover md:inset-0 md:left-0 md:w-full md:aspect-auto md:object-center"
             src="/videos/interests-hero.mp4"
           />
         </div>
@@ -1280,7 +1280,7 @@ function InterestsPage({ onBack }: { onBack: () => void }) {
         </div>
 
         {/* Hero content — left-aligned so it stays inside the video's blue panel at any screen size */}
-        <div className="relative z-10 w-full px-6 sm:px-10 md:px-14 lg:px-20 pt-6 pb-14 md:py-24">
+        <div className="relative z-10 w-full flex-1 flex flex-col justify-center md:flex-none md:block px-6 sm:px-10 md:px-14 lg:px-20 pt-4 pb-10 md:py-24">
           {/* Gaming-style loading bar */}
           <LoadBar delay={0.2} />
 
