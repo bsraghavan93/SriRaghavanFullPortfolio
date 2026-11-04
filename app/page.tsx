@@ -17,10 +17,10 @@ export default function Home() {
     <main className="fixed inset-0 h-dvh overflow-hidden bg-[#05060f] text-white">
       <HomeVideo />
 
-      {/* legibility overlay: vertical on mobile, horizontal on desktop */}
-      <div className="pointer-events-none fixed inset-0 z-[1] bg-[linear-gradient(180deg,#05060f_0%,rgba(5,6,15,0.85)_35%,rgba(5,6,15,0)_60%)] min-[900px]:bg-[linear-gradient(90deg,#05060f_0%,rgba(5,6,15,0.9)_38%,rgba(5,6,15,0)_66%)]" />
+      {/* legibility overlay (desktop only; on mobile the video fades into the background) */}
+      <div className="pointer-events-none fixed inset-0 z-[1] hidden min-[900px]:block min-[900px]:bg-[linear-gradient(90deg,#05060f_0%,rgba(5,6,15,0.9)_38%,rgba(5,6,15,0)_66%)]" />
 
-      <div className="relative z-[2] flex h-dvh flex-col px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))] min-[900px]:w-[38vw] min-[900px]:min-w-[320px] min-[900px]:max-w-[560px] min-[900px]:justify-center min-[900px]:py-0 min-[900px]:pl-[clamp(24px,6vw,96px)] min-[900px]:pr-0">
+      <div className="relative z-[2] flex h-dvh flex-col justify-end px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))] min-[900px]:w-[38vw] min-[900px]:min-w-[320px] min-[900px]:max-w-[560px] min-[900px]:justify-center min-[900px]:py-0 min-[900px]:pl-[clamp(24px,6vw,96px)] min-[900px]:pr-0">
         <p
           className="intro-fade text-[0.7rem] font-medium uppercase tracking-[0.3em] text-cyan-400/90"
           style={fade(0)}
