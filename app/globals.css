@@ -140,3 +140,25 @@
 @media (prefers-reduced-motion: reduce) {
   .intro-fade { opacity: 1; animation: none; }
 }
+
+/* Home name: soft focus-in, then a slow gradient drift */
+@keyframes name-in {
+  from { opacity: 0; filter: blur(10px); letter-spacing: 0.05em; transform: translateY(6px); }
+  to { opacity: 1; filter: blur(0); letter-spacing: -0.025em; transform: none; }
+}
+@keyframes name-drift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.name-in {
+  opacity: 0;
+  animation: name-in 1100ms cubic-bezier(0.2, 0.7, 0.2, 1) 150ms forwards;
+}
+.name-drift {
+  background-size: 200% 100%;
+  animation: name-drift 9s ease-in-out 1.2s infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .name-in { opacity: 1; animation: none; }
+  .name-drift { animation: none; }
+}

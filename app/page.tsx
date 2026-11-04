@@ -28,10 +28,10 @@ export default function Home() {
           Hello, I&apos;m
         </p>
         <h1
-          className="intro-fade mt-3 text-[clamp(2.2rem,11vw,2.8rem)] font-bold leading-none tracking-tight whitespace-nowrap min-[900px]:text-[clamp(2.5rem,4.6vw,5rem)]"
+          className="name-in mt-3 text-[clamp(2.2rem,11vw,2.8rem)] font-bold leading-none tracking-tight whitespace-nowrap min-[900px]:text-[clamp(2.5rem,4.6vw,5rem)]"
           style={fade(1)}
         >
-          <span className="bg-gradient-to-r from-cyan-400 via-sky-300 to-violet-400 bg-clip-text text-transparent">
+          <span className="name-drift bg-gradient-to-r from-cyan-400 via-sky-300 to-violet-400 bg-clip-text text-transparent">
             Sri Raghavan
           </span>
         </h1>
