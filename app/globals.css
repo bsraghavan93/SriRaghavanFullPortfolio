@@ -127,3 +127,16 @@
     @apply font-sans;
     }
 }
+/* Home intro: staggered fade-in */
+@keyframes intro-fade {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.intro-fade {
+  opacity: 0;
+  animation: intro-fade 500ms ease-out forwards;
+  animation-delay: calc(var(--i, 0) * 100ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .intro-fade { opacity: 1; animation: none; }
+}
