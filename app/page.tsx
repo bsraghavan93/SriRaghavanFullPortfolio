@@ -59,7 +59,7 @@ export default function Home() {
           className="intro-fade group mt-5 w-fit text-sm text-slate-500 transition-colors hover:text-slate-300 min-[900px]:mt-8"
           style={fade(4)}
         >
-          <span className="group-hover:underline">Take a look at my work</span>
+          <span className="group-hover:underline">Some useful tools I built</span>
           <span className="ml-1 inline-block transition-transform group-hover:translate-x-0.5">→</span>
         </a>
       </div>
