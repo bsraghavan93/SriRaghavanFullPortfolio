@@ -200,7 +200,7 @@ export default function WorkPage() {
             href="/"
             className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-[13px] text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
           >
-            <ArrowLeft className="h-3.5 w-3.5" /> Portfolio
+            <ArrowLeft className="h-3.5 w-3.5" /> Home
           </Link>
           <span className="text-sm font-semibold tracking-tight text-slate-300">Sri Raghavan</span>
         </nav>
@@ -247,7 +247,7 @@ export default function WorkPage() {
 
         <footer className="mt-20 flex flex-col items-start justify-between gap-4 border-t border-white/10 pt-8 text-sm text-slate-500 sm:flex-row sm:items-center">
           <p>Have a tool you&apos;d like to see? I&apos;m always collecting ideas.</p>
-          <Link href="/#contact" className="inline-flex items-center gap-1.5 text-cyan-300 hover:underline">
+          <Link href="/portfolio#contact" className="inline-flex items-center gap-1.5 text-cyan-300 hover:underline">
             Suggest a tool <ArrowUpRight className="h-3.5 w-3.5" />
           </Link>
         </footer>
