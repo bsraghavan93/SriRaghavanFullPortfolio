@@ -30,24 +30,24 @@ import {
 
 const SAMPLE_A = {
   name: "Sri Raghavan",
-  role: "Full Stack Engineer",
-  yearsExperience: 10,
-  skills: [".NET", "C#", "Azure"],
-  address: { city: "Toronto", country: "Canada" },
+  tagline: "Maker by habit",
+  yearsPrinting: 3,
+  hobbies: ["3D printing", "PC gaming", "Drones"],
+  setup: { printer: "Ender 3", desk: "Standing" },
   active: true,
-  projects: [{ id: 1, client: "Loyalty Platform" }],
+  prints: [{ id: 1, name: "Cable organiser" }],
 };
 
 const SAMPLE_B = {
   name: "Sri Raghavan",
-  role: "Lead Full Stack .NET Engineer",
-  yearsExperience: 11,
-  skills: [".NET", "C#", "Azure", "AWS"],
-  address: { city: "Toronto", country: "Canada", postal: "M5V" },
+  tagline: "Maker, gamer, tinkerer",
+  yearsPrinting: 4,
+  hobbies: ["3D printing", "PC gaming", "Drones", "Photography"],
+  setup: { printer: "Ender 3", desk: "Standing", filament: "PETG" },
   active: "yes",
-  projects: [
-    { id: 1, client: "Loyalty Platform" },
-    { id: 2, client: "Government Modernization" },
+  prints: [
+    { id: 1, name: "Cable organiser" },
+    { id: 2, name: "Dragon, articulated" },
   ],
 };
 

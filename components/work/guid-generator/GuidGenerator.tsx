@@ -50,7 +50,7 @@ export default function GuidGenerator() {
 
   const [ns, setNs] = useState<keyof typeof NAMESPACES | "custom">("DNS");
   const [customNs, setCustomNs] = useState("");
-  const [names, setNames] = useState("example.com\nsriraghavan.dev");
+  const [names, setNames] = useState("benchy\narticulated-dragon\ncontroller-stand");
 
   const [uuids, setUuids] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);

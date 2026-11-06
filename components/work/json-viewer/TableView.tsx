@@ -56,7 +56,7 @@ export default function TableView({ rows, sourceLabel, selectedIndex, selectedCo
           Table view works on an <span className="text-slate-200">array of objects</span>.
         </p>
         <p className="max-w-sm text-xs text-slate-500">
-          Select an array of objects in the tree (for example <code className="text-cyan-300">$.projects</code>) and
+          Select an array of objects in the tree (for example <code className="text-cyan-300">$.prints</code>) and
           switch back here.
         </p>
       </div>

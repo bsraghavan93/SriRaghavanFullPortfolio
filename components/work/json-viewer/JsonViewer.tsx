@@ -477,8 +477,8 @@ export default function JsonViewer() {
                 <div className="mb-1 font-semibold text-white">Path queries</div>
                 Start the search with <code className="text-cyan-300">$</code> to run a JSONPath-style query:
                 <ul className="mt-1.5 space-y-0.5 font-mono text-[11px] text-slate-300">
-                  <li>$.projects[0].client</li>
-                  <li>$.projects[*].impact</li>
+                  <li>$.prints[0].name</li>
+                  <li>$.prints[*].tags</li>
                   <li>$..tags</li>
                 </ul>
               </div>

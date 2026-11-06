@@ -477,21 +477,21 @@ export function previewValue(v: unknown, max = 120): string {
 
 export const SAMPLE_JSON = {
   name: "Sri Raghavan",
-  role: "Lead Full Stack .NET Engineer",
+  tagline: "Maker by habit",
   active: true,
-  yearsExperience: 11,
+  yearsPrinting: 4,
   website: "https://sriraghavan.dev",
-  startedAt: "2015-06-01T09:00:00Z",
+  startedAt: "2022-03-14T18:30:00Z",
   accent: "#22d3ee",
-  skills: {
-    backend: [".NET", "C#", "ASP.NET Core", "Microservices"],
-    cloud: ["Azure", "AWS", "GCP"],
-    devops: { ci: "GitHub Actions", containers: ["Docker", "Kubernetes"], iac: null },
+  hobbies: {
+    making: ["3D printing", "PC building", "Tinkering"],
+    play: ["PC gaming", "Co-op nights", "Retro consoles"],
+    outdoors: { flying: ["Drone"], camera: "Mirrorless", favouriteLight: "Golden hour", travelBucketList: null },
   },
-  projects: [
-    { id: 1, client: "Loyalty Platform", impact: { deployments: "94% faster", latencyMs: -70 }, tags: ["cloud", "api"] },
-    { id: 2, client: "Government Modernization", impact: { concurrentRequests: 10000 }, tags: ["migration"] },
-    { id: 3, client: "Cloud-native Microservices", impact: { uptime: 99.95 }, tags: ["k8s", "observability"] },
+  prints: [
+    { id: 1, name: "Cable organiser", filament: "PLA", hours: 2.5, tags: ["desk", "useful"] },
+    { id: 2, name: "Dragon, articulated", filament: "PETG", hours: 11, tags: ["fun", "showpiece"] },
+    { id: 3, name: "Controller stand", filament: "PLA", hours: 4.25, tags: ["gaming", "desk"] },
   ],
   embedded: '{"note":"This string is itself JSON","ok":true}',
 };
